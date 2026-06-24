@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { 
   User, Mail, Phone, Lock, Eye, EyeOff, ArrowRight, 
-  CheckCircle2, AlertCircle, Globe2, MapPin, Languages, 
+  CheckCircle2, AlertCircle, Languages, 
   Sparkles, Upload, ShieldCheck 
 } from "lucide-react";
 import { cn } from "../../lib/utils";

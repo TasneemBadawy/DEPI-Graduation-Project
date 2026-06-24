@@ -23,7 +23,120 @@
 body {
   margin: 0;
   font-family: var(--font-sans);
-  background-color: #f8fafc;
-  color: var(--color-foreground);
+  background: var(--background);
+  color: var(--foreground);
   -webkit-font-smoothing: antialiased;
+}
+:root {
+  --background: #faf7f2;
+  --foreground: #1f2937;
+
+  --card: #ffffff;
+
+  --primary: #e15b28;
+  --secondary: #0f766e;
+
+  --muted: #f7f4ef;
+  --muted-foreground: #6b7280;
+
+  --border: #ece7df;
+  --border-faint: #f4efe8;
+
+  --success: #10b981;
+  --warning: #f59e0b;
+  --destructive: #ef4444;
+}
+.card {
+ background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 28px;
+  box-shadow: 0 6px 20px rgba(15, 23, 42, 0.05);
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  border-radius: 999px;
+  border: none;
+  font-weight: 500;
+}
+
+.btn-sm {
+  padding: 8px 14px;
+  font-size: 13px;
+}
+
+.btn-outline {
+  background: white;
+  border: 1px solid var(--border);
+  color: var(--foreground);
+}
+
+.btn-warm {
+  background: var(--primary);
+  color: white;
+}
+
+.btn-danger {
+  background: #ef4444;
+  color: white;
+}
+
+.avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  font-weight: 600;
+}
+
+.avatar-secondary {
+  background: #dff7f1;
+  color: #0f766e;
+}
+
+.pill {
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.pill-primary {
+  background: #fff2e8;
+  color: var(--primary);
+}
+
+.pill-accepted {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.pill-declined {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+.icon-box-warm {
+  width: 36px;
+  height: 36px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #fff2e8;
+  color: var(--primary);
+}
+
+.icon-box-secondary {
+  width: 36px;
+  height: 36px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #ecfeff;
+  color: #0f766e;
 }
