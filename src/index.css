@@ -1,0 +1,29 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+
+  /* درجات ثيم Nomade الأصلي بالملّي */
+  --color-nomade-dark: #6e4726;       /* البني الدافي الفخم بتاع خلفية الناف بار */
+  --color-nomade-orange: #e15b28;     /* البرتقالي المشرق بتاع زرار Join Nomade */
+  --color-nomade-hover: #ffffff1a;    /* الخلفية الشفافة الخفيفة للأزرار عند الـ Hover */
+  
+  --color-foreground: #0f172a;
+  --color-muted: #f8fafc;
+  --color-muted-foreground: #64748b;
+  --color-border: #e2e8f0;
+  --color-card: #ffffff;
+  
+  /* ألوان الحالات */
+  --color-success: #10b981;
+  --color-warning: #f59e0b;
+  --color-destructive: #ef4444;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  background-color: #f8fafc;
+  color: var(--color-foreground);
+  -webkit-font-smoothing: antialiased;
+}
