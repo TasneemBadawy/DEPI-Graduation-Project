@@ -1,0 +1,148 @@
+import guide1 from "../assets/guide-1.jpg";
+import guide2 from "../assets/guide-2.jpg";
+import guide3 from "../assets/guide-3.jpg";
+import guide4 from "../assets/guide-4.jpg";
+import guide5 from "../assets/guide-5.jpg";
+import guide6 from "../assets/guide-6.jpg";
+import tourCairo from "../assets/tour-cairo.jpg";
+import heroPyramids from "../assets/hero-pyramids.jpg";
+import tourLuxor from "../assets/tour-luxor.jpg";
+import tourNile from "../assets/tour-nile.jpg";
+
+export const GUIDES = [
+  {
+    slug: "sofia-romano",
+    name: "Sofia Romano",
+    photo: guide1,
+    cover: tourLuxor,
+    city: "Rome",
+    country: "Italy",
+    languages: ["English", "Italian"],
+    rating: 4.98,
+    reviews: 312,
+    specialty: "Ancient Rome & Vatican",
+    verified: true,
+    tagline: "Ancient Rome & Vatican specialist",
+    yearsGuiding: 9,
+    toursCompleted: 940,
+    responseTime: "within 2 hours",
+  },
+  {
+    slug: "hiroshi-tanaka",
+    name: "Hiroshi Tanaka",
+    photo: guide2,
+    cover: tourNile,
+    city: "Tokyo",
+    country: "Japan",
+    languages: ["English", "Japanese"],
+    rating: 4.95,
+    reviews: 248,
+    specialty: "Hidden Tokyo & food",
+    verified: true,
+    tagline: "Hidden Tokyo & food specialist",
+    yearsGuiding: 7,
+    toursCompleted: 610,
+    responseTime: "within 1 hour",
+  },
+  {
+    slug: "mateo-vargas",
+    name: "Mateo Vargas",
+    photo: guide3,
+    cover: heroPyramids,
+    city: "Cusco",
+    country: "Peru",
+    languages: ["English", "Spanish"],
+    rating: 4.97,
+    reviews: 410,
+    specialty: "Inca trails & Machu Picchu",
+    verified: true,
+    tagline: "Inca trails & Machu Picchu specialist",
+    yearsGuiding: 12,
+    toursCompleted: 1180,
+    responseTime: "within 1 hour",
+  },
+  {
+    slug: "amelie-laurent",
+    name: "Amélie Laurent",
+    photo: guide4,
+    cover: tourCairo,
+    city: "Paris",
+    country: "France",
+    languages: ["English", "French", "Italian"],
+    rating: 4.99,
+    reviews: 187,
+    specialty: "Art history & Montmartre",
+    verified: true,
+    tagline: "Art history & Montmartre specialist",
+    yearsGuiding: 6,
+    toursCompleted: 430,
+    responseTime: "within 3 hours",
+  },
+  {
+    slug: "karim-el-sayed",
+    name: "Karim El-Sayed",
+    photo: guide5,
+    cover: tourCairo,
+    city: "Cairo",
+    country: "Egypt",
+    languages: ["English", "Arabic", "French", "Italian"],
+    rating: 4.97,
+    reviews: 412,
+    specialty: "Pyramids & Egyptology",
+    verified: true,
+    tagline: "Licensed Egyptologist & Private Guide",
+    yearsGuiding: 11,
+    toursCompleted: 1280,
+    responseTime: "within 1 hour",
+    about:
+      "Cairo-born and Sorbonne-trained, I've spent the last decade walking travelers through the wonders of Ancient Egypt. My tours mix solid history (I'm a licensed Egyptologist) with the small, human stories that bring stones back to life. I tailor every itinerary to your pace, with breaks for mint tea and the best koshari in town.",
+    specializations: ["Ancient Egypt", "Hieroglyphics", "Family-friendly", "Photography spots", "Off-the-beaten-path"],
+    trust: [
+      "Licensed by the Egyptian Ministry of Tourism",
+      "Background-checked & ID verified by Nomade",
+      "Carries professional liability insurance",
+      "First aid certified",
+    ],
+    ratingBreakdown: { 5: 92, 4: 6, 3: 1, 2: 0, 1: 1 },
+    ratingCategories: { Knowledge: 5.0, Communication: 4.97, Punctuality: 4.99, Value: 4.9 },
+    reviewsList: [
+      {
+        name: "Amelia R.",
+        country: "United Kingdom",
+        date: "March 2026",
+        tour: "Valley of the Kings & Karnak Temple",
+        rating: 5,
+        text: "Karim is the reason our trip to Egypt became unforgettable. His knowledge is staggering — he reads hieroglyphs the way most of us read a menu — but what made the day was his patience with our two kids and his sense of humor. Worth every penny.",
+      },
+      {
+        name: "Marc D.",
+        country: "France",
+        date: "February 2026",
+        tour: "Pyramids of Giza & Sphinx",
+        rating: 5,
+        text: "Extremely professional and warm. Skipped the tourist traps and took us to spots we'd never have found alone.",
+      },
+    ],
+  },
+  {
+    slug: "aroha-ngata",
+    name: "Aroha Ngata",
+    photo: guide6,
+    cover: heroPyramids,
+    city: "Queenstown",
+    country: "New Zealand",
+    languages: ["English", "Māori"],
+    rating: 4.96,
+    reviews: 289,
+    specialty: "Fjords & adventure",
+    verified: true,
+    tagline: "Fjords & adventure specialist",
+    yearsGuiding: 8,
+    toursCompleted: 720,
+    responseTime: "within 2 hours",
+  },
+];
+
+export function getGuideBySlug(slug) {
+  return GUIDES.find((g) => g.slug === slug);
+}

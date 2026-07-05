@@ -1,0 +1,122 @@
+import tourLuxor from "../assets/tour-luxor.jpg";
+import heroPyramids from "../assets/hero-pyramids.jpg";
+import tourCairo from "../assets/tour-cairo.jpg";
+import tourRedSea from "../assets/tour-redsea.jpg";
+import tourAswan from "../assets/tour-aswan.jpg";
+import tourWhiteDesert from "../assets/tour-whitedesert.jpg";
+import tourNile from "../assets/tour-nile.jpg";
+
+export const TOURS = [
+  {
+    slug: "colosseum-ancient-rome-walk",
+    title: "Colosseum & Ancient Rome walk",
+    city: "Rome",
+    guideSlug: "sofia-romano",
+    image: tourLuxor,
+    duration: "Full day · 8h",
+    groupSize: "1–6 people",
+    price: 89,
+    rating: 4.9,
+    reviews: 1240,
+  },
+  {
+    slug: "machu-picchu-sunrise-trek",
+    title: "Machu Picchu sunrise trek",
+    city: "Cusco",
+    guideSlug: "mateo-vargas",
+    image: heroPyramids,
+    duration: "2 days · 1 night",
+    groupSize: "1–8 people",
+    price: 219,
+    rating: 4.95,
+    reviews: 612,
+  },
+  {
+    slug: "tokyo-street-food-neon-nights",
+    title: "Tokyo street food & neon nights",
+    city: "Tokyo",
+    guideSlug: "hiroshi-tanaka",
+    image: tourCairo,
+    duration: "Half day · 4h",
+    groupSize: "1–6 people",
+    price: 49,
+    rating: 4.88,
+    reviews: 890,
+  },
+  {
+    slug: "santorini-coastline-by-boat",
+    title: "Santorini coastline by boat",
+    city: "Santorini",
+    guideSlug: "amelie-laurent",
+    image: tourRedSea,
+    duration: "Full day · 7h",
+    groupSize: "1–10 people",
+    price: 75,
+    rating: 4.92,
+    reviews: 532,
+  },
+  {
+    slug: "marrakech-medina-souks",
+    title: "Marrakech medina & souks",
+    city: "Marrakech",
+    guideSlug: "karim-el-sayed",
+    image: tourAswan,
+    duration: "Full day · 6h",
+    groupSize: "1–6 people",
+    price: 65,
+    rating: 4.97,
+    reviews: 318,
+  },
+  {
+    slug: "sahara-overnight-desert-camp",
+    title: "Sahara overnight desert camp",
+    city: "Merzouga",
+    guideSlug: "karim-el-sayed",
+    image: tourWhiteDesert,
+    duration: "2 days · 1 night",
+    groupSize: "2–12 people",
+    price: 245,
+    rating: 4.96,
+    reviews: 207,
+  },
+  {
+    slug: "seine-sunset-cruise-paris",
+    title: "Seine sunset cruise in Paris",
+    city: "Paris",
+    guideSlug: "amelie-laurent",
+    image: tourNile,
+    duration: "Evening · 2h",
+    groupSize: "1–20 people",
+    price: 29,
+    rating: 4.85,
+    reviews: 1421,
+  },
+  {
+    slug: "pyramids-giza-sphinx-half-day",
+    title: "Pyramids of Giza & Sphinx — Private Half Day",
+    city: "Cairo",
+    guideSlug: "karim-el-sayed",
+    image: tourCairo,
+    duration: "5 hours",
+    groupSize: "1–6 people",
+    price: 95,
+    rating: 4.98,
+    reviews: 184,
+  },
+  {
+    slug: "valley-of-the-kings-karnak",
+    title: "Valley of the Kings & Karnak Temple",
+    city: "Luxor",
+    guideSlug: "karim-el-sayed",
+    image: tourLuxor,
+    duration: "Full day",
+    groupSize: "1–4 people",
+    price: 165,
+    rating: 4.99,
+    reviews: 132,
+  },
+];
+
+export function getToursByGuide(guideSlug) {
+  return TOURS.filter((t) => t.guideSlug === guideSlug);
+}

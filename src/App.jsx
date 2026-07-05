@@ -1,24 +1,31 @@
-import { useState } from "react";
+import { Routes, Route } from "react-router-dom";
 import Navbar from "./components/Navbar";
+import Home from "./pages/Home/Home";
 import Login from "./pages/Login/Login";
 import Register from "./pages/Register/Register";
-import Home from "./pages/Home/Home";
+import Guides from "./pages/Guides/Guides";
+import GuideProfile from "./pages/GuideProfile/GuideProfile";
+import Tours from "./pages/Tours/Tours";
+import TourDetail from "./pages/TourDetail/TourDetail";
+import Experiences from "./pages/Experiences/Experiences";
+import ExperienceDetail from "./pages/ExperienceDetail/ExperienceDetail";
 
 function App() {
-  // ستايت بسيطة عشان نبدل بين الشاشتين طالما مفيش راوتر كامل للمشروع لسه
-  const [currentScreen, setCurrentScreen] = useState("register"); // الديفولت ريجستر
-
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 font-sans">
-      {/* بنباصي الـ setScreen للناف بار عشان الأزرار تبدل الشاشات */}
-      <Navbar currentScreen={currentScreen} setScreen={setCurrentScreen} />
-      
-      <main className="transition-all duration-200">
-        {currentScreen === "login" ? (
-          <Login setScreen={setCurrentScreen} />
-        ) : (
-          <Register setScreen={setCurrentScreen} />
-        )}
+    <div className="min-h-screen bg-background text-foreground font-sans">
+      <Navbar />
+      <main>
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
+          <Route path="/guides" element={<Guides />} />
+          <Route path="/guides/:slug" element={<GuideProfile />} />
+          <Route path="/tours" element={<Tours />} />
+          <Route path="/tours/:slug" element={<TourDetail />} />
+          <Route path="/experiences" element={<Experiences />} />
+          <Route path="/experiences/:slug" element={<ExperienceDetail />} />
+        </Routes>
       </main>
     </div>
   );
