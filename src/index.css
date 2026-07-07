@@ -49,6 +49,7 @@
   --card: var(--color-card);
 
   --primary: var(--color-primary);
+  --primary-foreground: var(--color-primary-foreground);
   --secondary: var(--color-secondary);
 
   --muted: var(--color-muted);
@@ -60,6 +61,14 @@
   --success: var(--color-success);
   --warning: var(--color-warning);
   --destructive: var(--color-destructive);
+
+  /* Added: referenced by the dashboard components but previously undefined,
+     which silently dropped the whole declaration (invalid var() = ignored
+     property) — the referral CTA card, earnings bar, and "up" arrows were
+     rendering with no background/color at all because of this. */
+  --gradient-warm: linear-gradient(135deg, var(--color-primary), #f2994a);
+  --green-up: #16a34a;
+  --shadow-soft: 0 8px 24px rgba(15, 23, 42, 0.08);
 }
 
 html {
@@ -179,6 +188,88 @@ body {
 .icon-box-secondary {
   background: var(--color-secondary-soft);
   color: var(--secondary);
+}
+
+/* Added — referenced by the dashboard components (TouristDashboard,
+   GuideDashboard, ui/Navbar, ui/StatusPill, ui/MiniCalendar) but never
+   defined anywhere, so these buttons/badges/cards were rendering with no
+   styling at all (invisible borders, no rounded corners, no dividers). */
+
+.btn-ghost {
+  background: transparent;
+  color: var(--foreground);
+}
+.btn-ghost:hover {
+  background: var(--muted);
+}
+
+.btn-icon {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted-foreground);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.btn-icon:hover {
+  background: var(--muted);
+}
+
+.card-3xl {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 28px;
+  box-shadow: var(--shadow-elegant);
+}
+
+.divide-y > * + * {
+  border-top: 1px solid var(--border-faint);
+}
+
+.pill-confirmed {
+  background: var(--color-secondary-soft);
+  color: var(--secondary);
+}
+
+.pill-pending {
+  background: #fef3c7;
+  color: #b45309;
+}
+
+.pill-completed {
+  background: var(--color-primary-soft);
+  color: var(--primary);
+}
+
+.cal-day {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  aspect-ratio: 1;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 500;
+}
+.cal-day-empty {
+  visibility: hidden;
+}
+.cal-day-valid {
+  color: var(--foreground);
+}
+.cal-day-busy {
+  background: var(--color-secondary-soft);
+  color: var(--secondary);
+}
+.cal-day-today {
+  background: var(--primary);
+  color: var(--primary-foreground);
+  font-weight: 700;
 }
 
 /* ===========================

@@ -12,6 +12,7 @@ import AuthTabs from "../../components/auth/AuthTabs";
 import { SocialRow } from "../../components/AuthComponents";
 import { cn } from "../../lib/utils";
 import heroPyramids from "../../assets/hero-pyramids.jpg";
+import { setCurrentUser, dashboardPathForRole } from "../../lib/auth";
 
 /** Builds a small "initials" avatar data-URI so a brand-new guide has a
  *  profile photo without us putting someone else's stock face on their
@@ -192,7 +193,10 @@ function TouristRegisterForm() {
       onSubmit={(e) => {
         e.preventDefault();
         setTouched({ name: true, email: true, password: true });
-        if (!nameError && !emailError && !passwordError && name && agreed) navigate("/login");
+        if (!nameError && !emailError && !passwordError && name && agreed) {
+          setCurrentUser({ name: name.trim(), email, role: "tourist" });
+          navigate(dashboardPathForRole("tourist"));
+        }
       }}
       className="space-y-4"
     >
@@ -279,10 +283,12 @@ function GuideRegisterForm() {
       trust: ["Application submitted — pending Nomade verification"],
     };
 
-    // No backend yet, so the new guide doesn't exist in the mock dataset.
-    // We hand the freshly-built record to GuideProfile via router state
-    // under a reserved "preview" slug instead of persisting it anywhere.
-    navigate("/guides/preview", { state: { guide: newGuide } });
+    // No backend yet, so the new guide doesn't exist in any dataset. We
+    // stash the freshly-built record on the session as `profile` so the
+    // Guide dashboard (and its "preview public profile" link, if it uses
+    // one) can read it.
+    setCurrentUser({ name, email: data.email, role: "guide", profile: newGuide });
+    navigate(dashboardPathForRole("guide"));
   };
 
   return (

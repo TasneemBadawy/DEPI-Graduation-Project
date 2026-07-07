@@ -14,10 +14,13 @@ const NAV_LINKS = [
   { label: "About", sectionId: "about" },
 ];
 
-// Pages that show only the logo + wordmark, with no nav links or auth buttons.
+// Pages that show only the logo + wordmark, with no nav links or auth
+// buttons — auth pages, individual guide profiles, and dashboards (which
+// render their own internal nav via components/ui/Navbar.jsx).
 function isMinimalPath(pathname) {
   if (pathname === "/login" || pathname === "/register") return true;
   if (pathname.startsWith("/guides/") && pathname !== "/guides/") return true; // individual guide profile
+  if (pathname.startsWith("/dashboard")) return true; // dashboards have their own header
   return false;
 }
 
