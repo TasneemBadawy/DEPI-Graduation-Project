@@ -6,6 +6,12 @@ import RoleSelector from "../../components/auth/RoleSelector";
 import AuthTabs from "../../components/auth/AuthTabs";
 import { SocialRow } from "../../components/AuthComponents";
 import { cn } from "../../lib/utils";
+import { setCurrentUser, dashboardPathForRole } from "../../lib/auth";
+
+function nameFromEmail(email) {
+  const local = email.split("@")[0] || "there";
+  return local.charAt(0).toUpperCase() + local.slice(1);
+}
 
 export default function Login() {
   const [role, setRole] = useState("tourist");
@@ -31,7 +37,11 @@ export default function Login() {
     e.preventDefault();
     setTouched({ email: true, password: true });
     if (!email || !password || emailError || passwordError) return;
-    navigate("/");
+
+    // No backend yet — this establishes a client-side session using the
+    // role picked above via the shared lib/auth.js helper.
+    setCurrentUser({ name: nameFromEmail(email), email, role });
+    navigate(dashboardPathForRole(role));
   };
 
   return (

@@ -1,17 +1,16 @@
-import { Compass, MapPin, ShieldCheck } from "lucide-react";
+import { Compass, MapPin } from "lucide-react";
 import { cn } from "../../lib/utils";
 
 const ROLES = [
   { id: "tourist", label: "Tourist", sub: "Discover & book journeys", Icon: Compass },
   { id: "guide", label: "Tour Guide", sub: "Host travelers worldwide", Icon: MapPin },
-  { id: "admin", label: "Admin", sub: "Manage the Nomade platform", Icon: ShieldCheck },
 ];
 
 export default function RoleSelector({ value, onChange }) {
   return (
     <div className="mb-6">
       <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-muted-foreground">I am a</label>
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-2 gap-2">
         {ROLES.map(({ id, label, sub, Icon }) => {
           const active = value === id;
           return (

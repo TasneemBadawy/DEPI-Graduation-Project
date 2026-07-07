@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   User, Mail, Phone, Lock, Eye, EyeOff, ArrowRight,
-  CheckCircle2, AlertCircle, Languages, Sparkles, Upload, ShieldCheck,
+  CheckCircle2, AlertCircle, Languages, Sparkles, Upload,
   Link2, Globe,
 } from "lucide-react";
 import { InstagramIcon, FacebookIcon, LinkedinIcon } from "../../components/icons/BrandIcons";
@@ -12,6 +12,7 @@ import AuthTabs from "../../components/auth/AuthTabs";
 import { SocialRow } from "../../components/AuthComponents";
 import { cn } from "../../lib/utils";
 import heroPyramids from "../../assets/hero-pyramids.jpg";
+import { setCurrentUser, dashboardPathForRole } from "../../lib/auth";
 
 /** Builds a small "initials" avatar data-URI so a brand-new guide has a
  *  profile photo without us putting someone else's stock face on their
@@ -40,7 +41,6 @@ export default function Register() {
 
       {role === "tourist" && <TouristRegisterForm />}
       {role === "guide" && <GuideRegisterForm />}
-      {role === "admin" && <AdminRegisterForm />}
     </AuthLayout>
   );
 }
@@ -193,7 +193,10 @@ function TouristRegisterForm() {
       onSubmit={(e) => {
         e.preventDefault();
         setTouched({ name: true, email: true, password: true });
-        if (!nameError && !emailError && !passwordError && name && agreed) navigate("/login");
+        if (!nameError && !emailError && !passwordError && name && agreed) {
+          setCurrentUser({ name: name.trim(), email, role: "tourist" });
+          navigate(dashboardPathForRole("tourist"));
+        }
       }}
       className="space-y-4"
     >
@@ -280,10 +283,12 @@ function GuideRegisterForm() {
       trust: ["Application submitted — pending Nomade verification"],
     };
 
-    // No backend yet, so the new guide doesn't exist in the mock dataset.
-    // We hand the freshly-built record to GuideProfile via router state
-    // under a reserved "preview" slug instead of persisting it anywhere.
-    navigate("/guides/preview", { state: { guide: newGuide } });
+    // No backend yet, so the new guide doesn't exist in any dataset. We
+    // stash the freshly-built record on the session as `profile` so the
+    // Guide dashboard (and its "preview public profile" link, if it uses
+    // one) can read it.
+    setCurrentUser({ name, email: data.email, role: "guide", profile: newGuide });
+    navigate(dashboardPathForRole("guide"));
   };
 
   return (
@@ -334,6 +339,7 @@ function GuideRegisterForm() {
           <Field id="instagram" label="Instagram" icon={InstagramIcon} placeholder="@nomadekarim" value={data.instagram} onChange={(v) => set("instagram", v)} />
           <Field id="facebook" label="Facebook" icon={FacebookIcon} placeholder="facebook.com/…" value={data.facebook} onChange={(v) => set("facebook", v)} />
           <Field id="linkedin" label="LinkedIn" icon={LinkedinIcon} placeholder="linkedin.com/in/…" value={data.linkedin} onChange={(v) => set("linkedin", v)} />
+          <Field id="website" label="Website" icon={Link2} placeholder="https://…" value={data.website} onChange={(v) => set("website", v)} />
         </div>
       </Section>
 
@@ -357,28 +363,3 @@ function GuideRegisterForm() {
   );
 }
 
-/* ───────────────────────────── ADMIN ───────────────────────────── */
-
-function AdminRegisterForm() {
-  return (
-    <div>
-      <div className="rounded-xl border border-secondary/20 bg-secondary-soft/50 p-5 text-left flex items-start gap-3">
-        <ShieldCheck className="h-6 w-6 shrink-0 text-secondary" />
-        <div>
-          <h3 className="text-sm font-semibold text-foreground">Admin access by invitation</h3>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Admin accounts are provisioned by the Nomade team. If you have an
-            invitation link, open it from your inbox to complete setup.
-          </p>
-          <button
-            type="button"
-            className="mt-3 rounded-lg bg-secondary px-4 py-2 text-sm font-semibold text-white hover:brightness-110"
-          >
-            Request admin access
-          </button>
-        </div>
-      </div>
-      <SocialRow redirectTo="/register" />
-    </div>
-  );
-}
