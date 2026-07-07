@@ -9,6 +9,8 @@ import Tours from "./pages/Tours/Tours";
 import TourDetail from "./pages/TourDetail/TourDetail";
 import Experiences from "./pages/Experiences/Experiences";
 import ExperienceDetail from "./pages/ExperienceDetail/ExperienceDetail";
+import GuidePage from "./dashboard/guide/page";
+import TouristPage from "./dashboard/tourist/page";
 
 function App() {
   return (
@@ -25,6 +27,8 @@ function App() {
           <Route path="/tours/:slug" element={<TourDetail />} />
           <Route path="/experiences" element={<Experiences />} />
           <Route path="/experiences/:slug" element={<ExperienceDetail />} />
+          <Route path="/dashboard/guide" element={<GuidePage />} />
+          <Route path="/dashboard/tourist" element={<TouristPage />} />
         </Routes>
       </main>
     </div>

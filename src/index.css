@@ -1,37 +1,65 @@
 @import "tailwindcss";
 
 @theme {
-  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-sans: "Inter", system-ui, -apple-system, sans-serif;
 
-  /* Nomade brand palette */
-  --color-nomade-dark: #6e4726;       /* warm brown, used for the navbar hero overlay */
-  --color-nomade-orange: #e15b28;     /* legacy alias, kept for backwards compatibility */
+  /* ===========================
+     Nomade Brand Colors
+  =========================== */
+  --color-nomade-dark: #6e4726;
+  --color-nomade-orange: #e15b28;
   --color-nomade-hover: #ffffff1a;
 
-  /* Semantic tokens used across the app */
-  --color-primary: #e15b28;           /* Nomade orange — CTAs, prices, ratings */
+  /* ===========================
+     Semantic Colors
+  =========================== */
+  --color-primary: #e15b28;
   --color-primary-foreground: #ffffff;
-  --color-primary-soft: #fdf1ea;
+  --color-primary-soft: #fff2e8;
 
-  --color-secondary: #0d9488;         /* teal — trust badges, verified icons */
+  --color-secondary: #0f766e;
   --color-secondary-foreground: #ffffff;
-  --color-secondary-soft: #ecfdf5;
+  --color-secondary-soft: #ecfeff;
 
-  --color-background: #f8fafc;
-  --color-foreground: #0f172a;
-  --color-muted: #f8fafc;
-  --color-muted-foreground: #64748b;
-  --color-border: #e2e8f0;
+  --color-background: #faf7f2;
+  --color-foreground: #1f2937;
+
   --color-card: #ffffff;
 
-  /* State colors */
+  --color-muted: #f7f4ef;
+  --color-muted-foreground: #6b7280;
+
+  --color-border: #ece7df;
+  --color-border-faint: #f4efe8;
+
+  /* State Colors */
   --color-success: #10b981;
   --color-warning: #f59e0b;
   --color-destructive: #ef4444;
 
-  /* Elevation */
-  --shadow-card: 0 1px 3px rgba(15, 23, 42, 0.08), 0 1px 2px rgba(15, 23, 42, 0.04);
+  /* Shadows */
+  --shadow-card: 0 6px 20px rgba(15, 23, 42, 0.05);
   --shadow-elegant: 0 20px 40px -12px rgba(110, 71, 38, 0.25);
+}
+
+:root {
+  --background: var(--color-background);
+  --foreground: var(--color-foreground);
+
+  --card: var(--color-card);
+
+  --primary: var(--color-primary);
+  --secondary: var(--color-secondary);
+
+  --muted: var(--color-muted);
+  --muted-foreground: var(--color-muted-foreground);
+
+  --border: var(--color-border);
+  --border-faint: var(--color-border-faint);
+
+  --success: var(--color-success);
+  --warning: var(--color-warning);
+  --destructive: var(--color-destructive);
 }
 
 html {
@@ -41,16 +69,127 @@ html {
 body {
   margin: 0;
   font-family: var(--font-sans);
-  background-color: var(--color-background);
-  color: var(--color-foreground);
+  background: var(--background);
+  color: var(--foreground);
   -webkit-font-smoothing: antialiased;
 }
 
-/* Utility: hide scrollbar on horizontal card rails */
+/* ===========================
+   Components
+=========================== */
+
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 28px;
+  box-shadow: var(--shadow-card);
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  cursor: pointer;
+  border: none;
+  border-radius: 999px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.btn-sm {
+  padding: 8px 14px;
+  font-size: 13px;
+}
+
+.btn-outline {
+  background: var(--card);
+  border: 1px solid var(--border);
+  color: var(--foreground);
+}
+
+.btn-outline:hover {
+  background: var(--muted);
+}
+
+.btn-warm {
+  background: var(--primary);
+  color: var(--color-primary-foreground);
+}
+
+.btn-warm:hover {
+  opacity: 0.92;
+}
+
+.btn-danger {
+  background: var(--destructive);
+  color: white;
+}
+
+.avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  font-weight: 600;
+}
+
+.avatar-secondary {
+  background: #dff7f1;
+  color: var(--secondary);
+}
+
+.pill {
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.pill-primary {
+  background: var(--color-primary-soft);
+  color: var(--primary);
+}
+
+.pill-accepted {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.pill-declined {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+.icon-box-warm,
+.icon-box-secondary {
+  width: 36px;
+  height: 36px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.icon-box-warm {
+  background: var(--color-primary-soft);
+  color: var(--primary);
+}
+
+.icon-box-secondary {
+  background: var(--color-secondary-soft);
+  color: var(--secondary);
+}
+
+/* ===========================
+   Utilities
+=========================== */
+
 .no-scrollbar {
   scrollbar-width: none;
   -ms-overflow-style: none;
 }
+
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }
