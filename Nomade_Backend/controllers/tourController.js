@@ -14,11 +14,14 @@ export const addTour = async (req, res) => {
     Country,
     City,
     Street,
-    tour_Description,
+    Description,
     Days,
     Nights,
-    images,
   } = req.body;
+
+  const imagePaths = req.files
+  ? req.files.map(file => file.path)
+  : [];
 
   try {
     await createTour(
@@ -27,10 +30,10 @@ export const addTour = async (req, res) => {
       Country,
       City,
       Street,
-      tour_Description,
+      Description,
       Days,
       Nights,
-      images,
+     imagePaths,
     );
 
     res.status(201).json({

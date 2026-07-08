@@ -8,6 +8,7 @@ import {
 } from "../controllers/tourController.js";
 import logInAuthMiddleware from "../middlewares/authMiddleware.js";
 import adminMiddleware from "../middlewares/adminMiddleware.js";
+import upload from "../middlewares/uploadMiddleware.js";
 const router = express.Router();     
 
 /**
@@ -17,13 +18,13 @@ const router = express.Router();
  *     tags:
  *       - Tours
  *     summary: Add a new tour
- *     description: Allows an authenticated Admin or Guide to create a new tour.
+ *     description: Creates a new tour with one or more images.
  *     security:
  *       - bearerAuth: []
  *     requestBody:
  *       required: true
  *       content:
- *         application/json:
+ *         multipart/form-data:
  *           schema:
  *             type: object
  *             required:
@@ -60,9 +61,22 @@ const router = express.Router();
  *               Nights:
  *                 type: integer
  *                 example: 2
+ *               images:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                   format: binary
  *     responses:
  *       201:
- *         description: Tour added successfully.
+ *         description: Tour created successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: Tour created successfully
  *       400:
  *         description: Invalid input data.
  *       401:
@@ -73,7 +87,7 @@ const router = express.Router();
  *         description: Internal server error.
  */
 
-router.post("/add-tour",logInAuthMiddleware ,   addTour);
+router.post("/add-tour",logInAuthMiddleware , upload.array("images", 10) ,  addTour);
 
 /**
  * @swagger
