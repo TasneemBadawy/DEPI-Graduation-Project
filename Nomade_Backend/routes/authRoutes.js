@@ -19,11 +19,11 @@ const router = express.Router();
  *     tags:
  *       - Authentication
  *     summary: Register a new tourist
- *     description: Creates a new tourist account.
+ *     description: Creates a new tourist account with an optional profile image.
  *     requestBody:
  *       required: true
  *       content:
- *         application/json:
+ *         multipart/form-data:
  *           schema:
  *             type: object
  *             required:
@@ -40,15 +40,31 @@ const router = express.Router();
  *                 example: Ahmed
  *               Email:
  *                 type: string
+ *                 format: email
  *                 example: tasneem@gmail.com
  *               Password:
  *                 type: string
+ *                 format: password
  *                 example: 123456
+ *               Profile_Image:
+ *                 type: string
+ *                 format: binary
  *     responses:
  *       201:
  *         description: Tourist registered successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: Tourist registered successfully.
+ *                 Profile_Image:
+ *                   type: string
+ *                   example: uploads/1751844321234-profile.jpg
  *       400:
- *         description: Invalid email or password.
+ *         description: Validation failed or email already exists.
  *       500:
  *         description: Internal server error.
  */
@@ -100,11 +116,11 @@ router.post("/tourist/login", logInTourist);
  *     tags:
  *       - Authentication
  *     summary: Register a new guide
- *     description: Creates a new tour guide account.
+ *     description: Creates a new tour guide account with profile image, contact information, and guide details.
  *     requestBody:
  *       required: true
  *       content:
- *         application/json:
+ *         multipart/form-data:
  *           schema:
  *             type: object
  *             required:
@@ -121,15 +137,69 @@ router.post("/tourist/login", logInTourist);
  *                 example: Ali
  *               Email:
  *                 type: string
+ *                 format: email
  *                 example: guide@gmail.com
  *               Password:
  *                 type: string
+ *                 format: password
  *                 example: 123456
+ *               Country:
+ *                 type: string
+ *                 example: Egypt
+ *               About:
+ *                 type: string
+ *                 example: Certified local tour guide with 5 years of experience.
+ *               FaceBook:
+ *                 type: string
+ *                 format: uri
+ *                 example: https://facebook.com/mohamed
+ *               Linkedin:
+ *                 type: string
+ *                 format: uri
+ *                 example: https://linkedin.com/in/mohamed
+ *               Instagram:
+ *                 type: string
+ *                 format: uri
+ *                 example: https://instagram.com/mohamed
+ *               Profile_Image:
+ *                 type: string
+ *                 format: binary
+ *               phoneNumbers:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                 example:
+ *                   - "+201001112223"
+ *                   - "+201554443332"
+ *               specializations:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                 example:
+ *                   - Historical
+ *                   - Adventure
+ *               certificates:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                 example:
+ *                   - Ministry of Tourism License
+ *                   - First Aid Certificate
+ *               languages:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                 example:
+ *                   - English
+ *                   - Arabic
+ *                   - French
  *     responses:
  *       201:
  *         description: Guide registered successfully.
  *       400:
- *         description: Invalid email or password.
+ *         description: Validation failed.
+ *       409:
+ *         description: Guide already exists.
  *       500:
  *         description: Internal server error.
  */

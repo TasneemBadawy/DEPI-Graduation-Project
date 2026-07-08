@@ -115,10 +115,78 @@ router.get("/Tours", getTours);
  *       500:
  *         description: Internal server error.
  */
-router.get("/tours/search", searchTours);
-
 router.get("/get_Tour/:Tour_ID", getOneTour);
-
+/**
+ * @swagger
+ * /api/tours/search:
+ *   get:
+ *     tags:
+ *       - Tours
+ *     summary: Search and filter tours
+ *     description: Search tours by country, city, and/or maximum price per person.
+ *     parameters:
+ *       - in: query
+ *         name: Country
+ *         required: false
+ *         schema:
+ *           type: string
+ *         example: Egypt
+ *         description: Filter tours by country.
+ *       - in: query
+ *         name: City
+ *         required: false
+ *         schema:
+ *           type: string
+ *         example: Luxor
+ *         description: Filter tours by city.
+ *       - in: query
+ *         name: Price_per_person
+ *         required: false
+ *         schema:
+ *           type: number
+ *         example: 1500
+ *         description: Return tours with price less than or equal to this value.
+ *     responses:
+ *       200:
+ *         description: Tours retrieved successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   Tour_ID:
+ *                     type: integer
+ *                     example: 1
+ *                   Tour_name:
+ *                     type: string
+ *                     example: Luxor Historical Tour
+ *                   Price_per_person:
+ *                     type: number
+ *                     example: 1200
+ *                   Country:
+ *                     type: string
+ *                     example: Egypt
+ *                   City:
+ *                     type: string
+ *                     example: Luxor
+ *                   Street:
+ *                     type: string
+ *                     example: Nile Corniche
+ *                   Description:
+ *                     type: string
+ *                     example: Explore the ancient temples and monuments of Luxor.
+ *                   Days:
+ *                     type: integer
+ *                     example: 3
+ *                   Nights:
+ *                     type: integer
+ *                     example: 2
+ *       500:
+ *         description: Internal server error.
+ */
+router.get("/tours/search", searchTours);
 /**
  * @swagger
  * /api/delete_Tour/{Tour_ID}:

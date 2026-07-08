@@ -53,10 +53,67 @@ router.get("/guides", getGuides);
  *       500:
  *         description: Internal server error.
  */
-router.get("/guides/search", searchGuides); // add to th document    
-
-
 router.get("/guides/:id", getGuide);
+
+/**
+ * @swagger
+ * /api/guides/search:
+ *   get:
+ *     tags:
+ *       - Guides
+ *     summary: Search and filter guides
+ *     description: Search guides by country and/or specialization.
+ *     parameters:
+ *       - in: query
+ *         name: Country
+ *         required: false
+ *         schema:
+ *           type: string
+ *         example: Egypt
+ *         description: Filter guides by country.
+ *       - in: query
+ *         name: specialization
+ *         required: false
+ *         schema:
+ *           type: string
+ *         example: Historical
+ *         description: Filter guides by specialization.
+ *     responses:
+ *       200:
+ *         description: Guides retrieved successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   Guide_ID:
+ *                     type: integer
+ *                     example: 1
+ *                   FName:
+ *                     type: string
+ *                     example: Mohamed
+ *                   LName:
+ *                     type: string
+ *                     example: Ali
+ *                   Email:
+ *                     type: string
+ *                     example: mohamed@gmail.com
+ *                   Country:
+ *                     type: string
+ *                     example: Egypt
+ *                   Specialization:
+ *                     type: string
+ *                     example: Historical
+ *                   Profile_Image:
+ *                     type: string
+ *                     example: uploads/profile1.jpg
+ *       500:
+ *         description: Internal server error.
+ */
+
+router.get("/guides/search", searchGuides); // add to th document    
 /**
  * @swagger
  * /api/guides/{id}:
