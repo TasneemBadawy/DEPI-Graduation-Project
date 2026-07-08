@@ -17,6 +17,7 @@ export const addTour = async (req, res) => {
     tour_Description,
     Days,
     Nights,
+    images,
   } = req.body;
 
   try {
@@ -29,6 +30,7 @@ export const addTour = async (req, res) => {
       tour_Description,
       Days,
       Nights,
+      images,
     );
 
     res.status(201).json({
@@ -59,6 +61,9 @@ export const getOneTour = async (req, res) => {
 
   try {
     const tour = await getSingleTour(Tour_ID);
+    if (!tour) {
+      return res.status(404).json({ message: "Tour not found" });
+    }
     res.status(200).json(tour);
   } catch (err) {
     res.status(500).json({
@@ -67,20 +72,12 @@ export const getOneTour = async (req, res) => {
   }
 };
 
-// Delete Tour
+// Delete tour
 export const deleteTour = async (req, res) => {
   const { Tour_ID } = req.params;
 
   try {
-    const result = await deleteTourById(Tour_ID);
-
-    // check if tour  exist or not
-    if (result.affectedRows == 0) {
-      return res.status(404).json({
-        message: "Tour not found",
-      });
-    }
-
+    await deleteTourById(Tour_ID);
     res.status(200).json({
       message: "Tour deleted successfully",
     });
@@ -91,12 +88,14 @@ export const deleteTour = async (req, res) => {
   }
 };
 
-// Search and Filter Tours
+// Search Tours
 export const searchTours = async (req, res) => {
-  const { Country, City, Price_per_person } = req.query;
+  const country = req.query.country || req.query.Country;
+  const city = req.query.city || req.query.City;
+  const price = req.query.Price || req.query.price;
 
   try {
-    const tours = await searchAndFilterTours(Country, City, Price_per_person);
+    const tours = await searchAndFilterTours(country, city, price);
     res.status(200).json(tours);
   } catch (err) {
     res.status(500).json({
