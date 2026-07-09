@@ -31,13 +31,13 @@ export default function ExperienceDetail() {
           </p>
         </div>
 
-        <div className="mt-6 flex items-center justify-between rounded-2xl border border-border bg-card p-5">
+        {/* <div className="mt-6 flex items-center justify-between rounded-2xl border border-border bg-card p-5">
           <div>
             <div className="text-sm text-muted-foreground">from</div>
             <div className="text-xl font-bold text-foreground">${exp.price} <span className="text-sm font-normal text-muted-foreground">/ person</span></div>
           </div>
           <Button variant="hero" size="lg">Check availability</Button>
-        </div>
+        </div> */}
       </div>
 
       <Footer />

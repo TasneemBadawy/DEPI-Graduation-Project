@@ -3,13 +3,13 @@ import { useParams, Link, Navigate } from "react-router-dom";
 import { Star, MapPin, Clock, Users, Heart } from "lucide-react";
 import Button from "../../components/ui/Button";
 import Footer from "../../components/Footer";
-import { TOURS } from "../../data/tours";
+import { getAllTours } from "../../lib/tourStore";
 import { getGuideBySlug } from "../../data/guides";
 import { isTourSaved, toggleSavedTour } from "../../lib/savedTours";
 
 export default function TourDetail() {
   const { slug } = useParams();
-  const tour = TOURS.find((t) => t.slug === slug);
+  const tour = getAllTours().find((t) => t.slug === slug);
   const [saved, setSaved] = useState(tour ? isTourSaved(tour.slug) : false);
 
   if (!tour) return <Navigate to="/tours" replace />;
@@ -57,9 +57,13 @@ export default function TourDetail() {
             <div className="mt-6 rounded-2xl border border-border bg-card p-6">
               <h2 className="text-base font-semibold text-foreground">About this tour</h2>
               <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-                Join a Nomade local for {tour.title.toLowerCase()} — a {tour.duration.toLowerCase()} experience
-                designed around real stories, unhurried pacing, and the small details a guidebook would miss.
-                Perfect for {tour.groupSize.toLowerCase()}.
+                {tour.description || (
+                  <>
+                    Join a Nomade local for {tour.title.toLowerCase()} — a {tour.duration.toLowerCase()} experience
+                    designed around real stories, unhurried pacing, and the small details a guidebook would miss.
+                    Perfect for {tour.groupSize.toLowerCase()}.
+                  </>
+                )}
               </p>
             </div>
 

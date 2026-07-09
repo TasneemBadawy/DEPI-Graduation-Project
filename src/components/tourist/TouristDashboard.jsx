@@ -129,7 +129,6 @@ export default function TouristDashboard({ user }) {
                         {next.guide.rating} · Verified guide
                       </p>
                     </div>
-                    <button className="btn btn-outline btn-sm">Message</button>
                   </div>
                 </div>
                 <div style={{ marginTop: 20, display: "flex", flexWrap: "wrap", gap: 8 }}>

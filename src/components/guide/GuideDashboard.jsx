@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import {
 DollarSign,
 Check,
@@ -55,6 +56,7 @@ const DEFAULT_PROFILE = {
 /* ── Component ── */
 
 export default function GuideDashboard({ user }) {
+  const navigate = useNavigate();
   const [requests, setRequests] = useState(SEED_REQUESTS);
   const [name, setName] = useState(user.name);
   const [profile, setProfile] = useState({ ...DEFAULT_PROFILE, ...user.profile });
@@ -104,7 +106,7 @@ export default function GuideDashboard({ user }) {
           </div>
           <div style={{ display: "flex", gap: 8 }}>
             <button className="btn btn-outline btn-sm"><CalendarIcon size={14} /> Block dates</button>
-            <button className="btn btn-warm btn-sm"><Settings size={14} /> Tour settings</button>
+            <button className="btn btn-warm btn-sm" onClick={() => navigate("/dashboard/guide/tours")}><Settings size={14} /> Tour settings</button>
           </div>
         </section>
 

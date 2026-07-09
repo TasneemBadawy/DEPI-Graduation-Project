@@ -12,6 +12,7 @@ import ExperienceDetail from "./pages/ExperienceDetail/ExperienceDetail";
 import GuidePage from "./dashboard/guide/page";
 import TouristPage from "./dashboard/tourist/page";
 import DashboardRoot from "./dashboard/page";
+import TourManagement from "./pages/TourManagement/TourManagement";
 
 function App() {
   const { pathname } = useLocation();
@@ -36,6 +37,7 @@ function App() {
           <Route path="/experiences/:slug" element={<ExperienceDetail />} />
           <Route path="/dashboard" element={<DashboardRoot />} />
           <Route path="/dashboard/guide" element={<GuidePage />} />
+          <Route path="/dashboard/guide/tours" element={<TourManagement />} />
           <Route path="/dashboard/tourist" element={<TouristPage />} />
         </Routes>
       </main>

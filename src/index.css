@@ -272,6 +272,23 @@ body {
   font-weight: 700;
 }
 
+.form-input {
+  width: 100%;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--card);
+  padding: 9px 12px;
+  font-size: 13px;
+  color: var(--foreground);
+  outline: none;
+  box-sizing: border-box;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.form-input:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px oklch(0.62 0.18 42 / 0.15);
+}
+
 /* ===========================
    Utilities
 =========================== */

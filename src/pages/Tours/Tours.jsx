@@ -2,16 +2,17 @@ import { useMemo, useState } from "react";
 import { Search } from "lucide-react";
 import TourCard from "../../components/cards/TourCard";
 import Footer from "../../components/Footer";
-import { TOURS } from "../../data/tours";
+import { getAllTours } from "../../lib/tourStore";
 
 export default function Tours() {
   const [query, setQuery] = useState("");
+  const allTours = useMemo(() => getAllTours(), []);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return TOURS;
-    return TOURS.filter((t) => [t.title, t.city].join(" ").toLowerCase().includes(q));
-  }, [query]);
+    if (!q) return allTours;
+    return allTours.filter((t) => [t.title, t.city].join(" ").toLowerCase().includes(q));
+  }, [query, allTours]);
 
   return (
     <div className="min-h-screen bg-background">

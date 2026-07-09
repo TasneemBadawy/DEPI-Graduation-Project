@@ -14,7 +14,7 @@ import TourCard from "../../components/cards/TourCard";
 import ThingCard from "../../components/cards/ThingCard";
 
 import { GUIDES } from "../../data/guides";
-import { TOURS } from "../../data/tours";
+import { getAllTours } from "../../lib/tourStore";
 import { EXPERIENCES } from "../../data/experiences";
 import { TESTIMONIALS } from "../../data/testimonials";
 
@@ -22,6 +22,9 @@ import heroPyramids from "../../assets/hero-pyramids.jpg";
 
 export default function Home() {
   const location = useLocation();
+  // Read fresh on every mount so tours a guide just added/edited on the Tour
+  // Management page show up here without needing a hard refresh.
+  const tours = getAllTours();
 
   // Lets the navbar (or any link) send someone to "/#some-section" from a
   // different page — once Home has mounted, smooth-scroll to that section.
@@ -71,7 +74,7 @@ export default function Home() {
         soft
       >
         <Rail>
-          {TOURS.map((t) => (
+          {tours.map((t) => (
             <TourCard key={t.slug} {...t} />
           ))}
         </Rail>
