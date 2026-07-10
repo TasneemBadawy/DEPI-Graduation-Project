@@ -1,11 +1,10 @@
 "use client";
-import { useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { Navigate } from "react-router-dom";
+import { getCurrentUser, dashboardPathForRole } from "../lib/auth";
 
+// A bare "/dashboard" visit lands here and gets bounced to whichever
+// dashboard matches the signed-in user's role (tourist if no session exists).
 export default function DashboardRoot() {
-  const router = useRouter();
-  useEffect(() => {
-    router.replace("/dashboard/guide");
-  }, [router]);
-  return null;
+  const user = getCurrentUser();
+  return <Navigate to={dashboardPathForRole(user?.role)} replace />;
 }

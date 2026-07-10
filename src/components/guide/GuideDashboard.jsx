@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import {
 DollarSign,
 Check,
@@ -13,13 +14,14 @@ Clock,
 MapPin,
 ChevronRight,
 ArrowUpRight,
-TrendingUp,
 Settings,
+Pencil,
 } from "lucide-react";
 
 import Navbar from "../ui/Navbar";
 import StatCard from "../ui/StatCard";
 import MiniCalendar from "../ui/MiniCalendar";
+import { setCurrentUser } from "../../lib/auth";
 /* ── Seed data (mirrors design) ── */
 const SEED_REQUESTS = [
   { id: "r1", tourist: { name: "Sofia Martinez", country: "Spain" }, tour: "Pyramids of Giza & Sphinx — Private Half Day", date: "May 12, 2026 · 08:30", travelers: 2, total: 240, message: "Hi! We'd love a slower pace with extra time at the Sphinx for photos.", receivedAgo: "2h ago", status: "pending" },
@@ -44,10 +46,21 @@ function getInitials(name) {
   return name.split(" ").map((p) => p[0]).join("").toUpperCase();
 }
 
+const DEFAULT_PROFILE = {
+  about: "",
+  cities: [],
+  languages: [],
+  specializations: [],
+};
+
 /* ── Component ── */
 
 export default function GuideDashboard({ user }) {
+  const navigate = useNavigate();
   const [requests, setRequests] = useState(SEED_REQUESTS);
+  const [name, setName] = useState(user.name);
+  const [profile, setProfile] = useState({ ...DEFAULT_PROFILE, ...user.profile });
+  const [editOpen, setEditOpen] = useState(false);
   const pendingCount = requests.filter((r) => r.status === "pending").length;
 
   const stats = useMemo(() => [
@@ -62,9 +75,18 @@ export default function GuideDashboard({ user }) {
 
   const max = Math.max(...EARNINGS_WEEKS.map((x) => x.value));
 
+  const handleSaveProfile = (updated) => {
+    setName(updated.name);
+    setProfile(updated.profile);
+    // Persist to the session so it survives a refresh and is reflected
+    // anywhere else that reads the current user (e.g. lib/auth.js consumers).
+    setCurrentUser({ ...user, name: updated.name, profile: { ...user.profile, ...updated.profile } });
+    setEditOpen(false);
+  };
+
   return (
     <div style={{ minHeight: "100vh", background: "var(--background)" }}>
-      <Navbar role="guide" pendingCount={pendingCount} unreadMessages={3} />
+      <Navbar role="guide" />
 
       <main style={{ margin: "0 auto", maxWidth: 1280, padding: "32px 24px" }}>
 
@@ -75,7 +97,7 @@ export default function GuideDashboard({ user }) {
               Guide Workspace
             </p>
             <h1 style={{ marginTop: 4, fontSize: 32, fontWeight: 600, letterSpacing: "-0.5px", color: "var(--foreground)", margin: "4px 0 6px" }}>
-              Welcome back, {user.name.split(" ")[0]}
+              Welcome back, {name.split(" ")[0]}
             </h1>
             <p style={{ fontSize: 14, color: "var(--muted-foreground)", margin: 0 }}>
               You have <strong style={{ color: "var(--foreground)" }}>{pendingCount} pending requests</strong> and{" "}
@@ -84,7 +106,7 @@ export default function GuideDashboard({ user }) {
           </div>
           <div style={{ display: "flex", gap: 8 }}>
             <button className="btn btn-outline btn-sm"><CalendarIcon size={14} /> Block dates</button>
-            <button className="btn btn-warm btn-sm"><Settings size={14} /> Tour settings</button>
+            <button className="btn btn-warm btn-sm" onClick={() => navigate("/dashboard/guide/tours")}><Settings size={14} /> Tour settings</button>
           </div>
         </section>
 
@@ -235,22 +257,154 @@ export default function GuideDashboard({ user }) {
 
             <MiniCalendar />
 
-            {/* Boost visibility */}
-            <div style={{ borderRadius: 16, border: "1px solid oklch(0.52 0.12 175 / 0.2)", background: "oklch(0.52 0.12 175 / 0.05)", padding: 20 }}>
-              <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
-                <div className="icon-box-secondary"><TrendingUp size={16} /></div>
-                <div>
-                  <p style={{ fontSize: 14, fontWeight: 600, margin: 0 }}>Boost your visibility</p>
-                  <p style={{ marginTop: 2, fontSize: 12, color: "var(--muted-foreground)", margin: "4px 0 12px" }}>
-                    Add 2 more photos to increase bookings by ~15%.
-                  </p>
-                  <button className="btn btn-outline btn-sm">Improve profile</button>
-                </div>
+            {/* My Profile */}
+            <div className="card" style={{ padding: 20 }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <h3 style={{ fontSize: 15, fontWeight: 600, letterSpacing: "-0.2px", margin: 0 }}>My profile</h3>
+                <button
+                  type="button"
+                  onClick={() => setEditOpen(true)}
+                  className="btn btn-outline btn-sm"
+                  style={{ display: "flex", alignItems: "center", gap: 4 }}
+                >
+                  <Pencil size={13} /> Edit profile
+                </button>
               </div>
+
+              <p style={{ marginTop: 12, fontSize: 13, fontWeight: 600, margin: "12px 0 0" }}>{name}</p>
+
+              <p style={{ marginTop: 6, fontSize: 12, color: "var(--muted-foreground)", lineHeight: 1.5, margin: "6px 0 0" }}>
+                {profile.about || "No bio yet — click Edit profile to add one."}
+              </p>
+
+              <ProfileTagRow label="Cities" values={profile.cities} />
+              <ProfileTagRow label="Languages" values={profile.languages} />
+              <ProfileTagRow label="Specializations" values={profile.specializations} />
             </div>
           </aside>
         </section>
       </main>
+
+      {editOpen && (
+        <EditProfileModal
+          initialName={name}
+          initialProfile={profile}
+          onCancel={() => setEditOpen(false)}
+          onSave={handleSaveProfile}
+        />
+      )}
+    </div>
+  );
+}
+
+function ProfileTagRow({ label, values }) {
+  if (!values || values.length === 0) return null;
+  return (
+    <div style={{ marginTop: 12 }}>
+      <p style={{ fontSize: 11, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--muted-foreground)", margin: 0 }}>
+        {label}
+      </p>
+      <div style={{ marginTop: 6, display: "flex", flexWrap: "wrap", gap: 6 }}>
+        {values.map((v) => (
+          <span key={v} className="pill pill-primary">{v}</span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function EditProfileModal({ initialName, initialProfile, onCancel, onSave }) {
+  const [name, setName] = useState(initialName);
+  const [about, setAbout] = useState(initialProfile.about || "");
+  const [cities, setCities] = useState((initialProfile.cities || []).join(", "));
+  const [languages, setLanguages] = useState((initialProfile.languages || []).join(", "));
+  const [specializations, setSpecializations] = useState((initialProfile.specializations || []).join(", "));
+
+  const toList = (value) => value.split(",").map((v) => v.trim()).filter(Boolean);
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (!name.trim()) return;
+    onSave({
+      name: name.trim(),
+      profile: {
+        about: about.trim(),
+        cities: toList(cities),
+        languages: toList(languages),
+        specializations: toList(specializations),
+      },
+    });
+  };
+
+  return (
+    <div
+      style={{
+        position: "fixed", inset: 0, zIndex: 60, background: "rgba(15, 23, 42, 0.45)",
+        display: "flex", alignItems: "center", justifyContent: "center", padding: 20,
+      }}
+      onClick={onCancel}
+    >
+      <form
+        onSubmit={handleSubmit}
+        onClick={(e) => e.stopPropagation()}
+        className="card"
+        style={{ width: "100%", maxWidth: 480, maxHeight: "90vh", overflowY: "auto", padding: 24 }}
+      >
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <h2 style={{ fontSize: 18, fontWeight: 600, margin: 0 }}>Edit profile</h2>
+          <button type="button" onClick={onCancel} className="btn-icon" aria-label="Close">
+            <X size={18} />
+          </button>
+        </div>
+
+        <ModalField label="Name">
+          <input value={name} onChange={(e) => setName(e.target.value)} style={inputStyle} />
+        </ModalField>
+
+        <ModalField label="About">
+          <textarea value={about} onChange={(e) => setAbout(e.target.value)} rows={4} style={{ ...inputStyle, resize: "vertical", fontFamily: "inherit" }} />
+        </ModalField>
+
+        <ModalField label="Cities" hint="Comma-separated, e.g. Cairo, Luxor, Aswan">
+          <input value={cities} onChange={(e) => setCities(e.target.value)} style={inputStyle} />
+        </ModalField>
+
+        <ModalField label="Languages" hint="Comma-separated, e.g. English, Arabic, French">
+          <input value={languages} onChange={(e) => setLanguages(e.target.value)} style={inputStyle} />
+        </ModalField>
+
+        <ModalField label="Specializations" hint="Comma-separated, e.g. Ancient Egypt, Diving">
+          <input value={specializations} onChange={(e) => setSpecializations(e.target.value)} style={inputStyle} />
+        </ModalField>
+
+        <div style={{ marginTop: 24, display: "flex", justifyContent: "flex-end", gap: 8 }}>
+          <button type="button" onClick={onCancel} className="btn btn-outline btn-sm">Cancel</button>
+          <button type="submit" className="btn btn-warm btn-sm">Save changes</button>
+        </div>
+      </form>
+    </div>
+  );
+}
+
+const inputStyle = {
+  width: "100%",
+  marginTop: 6,
+  borderRadius: 10,
+  border: "1px solid var(--border)",
+  background: "var(--card)",
+  padding: "8px 12px",
+  fontSize: 13,
+  color: "var(--foreground)",
+  outline: "none",
+  boxSizing: "border-box",
+};
+
+function ModalField({ label, hint, children }) {
+  return (
+    <div style={{ marginTop: 16 }}>
+      <label style={{ fontSize: 12, fontWeight: 600, color: "var(--foreground)" }}>{label}</label>
+      {children}
+      {hint && <p style={{ marginTop: 4, fontSize: 11, color: "var(--muted-foreground)" }}>{hint}</p>}
     </div>
   );
 }

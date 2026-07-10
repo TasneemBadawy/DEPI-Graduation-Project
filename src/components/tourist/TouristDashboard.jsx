@@ -1,12 +1,13 @@
 "use client";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import {
   Plus, Plane, MapPin, CalendarIcon, Clock, Users,
-  Star, ChevronRight, Heart, GripVertical, Sparkles,
+  Star, Heart, GripVertical, X,
 } from "lucide-react";
-
+import { Link } from 'react-router-dom';
 import StatusPill from "../ui/StatusPill";
 import Navbar from "../ui/Navbar";
+import { getSavedTours, removeSavedTour } from "../../lib/savedTours";
 
 /* ── Types ── */
 
@@ -30,12 +31,6 @@ const ITINERARY = [
   { day: "Day 7", title: "Departure",              time: "—",     tone: "muted"     },
 ];
 
-const SAVED = [
-  { title: "White Desert Overnight Camp", city: "Bahariya", price: 220 },
-  { title: "Hot Air Balloon over Luxor",  city: "Luxor",    price: 145 },
-  { title: "Cairo Street Food Walk",      city: "Cairo",    price: 55  },
-];
-
 function dayBoxStyle(tone) {
   if (tone === "primary")   return { background: "oklch(0.62 0.18 42 / 0.1)",  color: "var(--primary)"  };
   if (tone === "secondary") return { background: "oklch(0.52 0.12 175 / 0.15)", color: "oklch(0.52 0.12 175)" };
@@ -46,17 +41,33 @@ function dayBoxStyle(tone) {
 
 export default function TouristDashboard({ user }) {
   const [tab, setTab] = useState("All");
+  const [bookings, setBookings] = useState(BOOKINGS);
+  const [saved, setSaved] = useState([]);
+
+  useEffect(() => {
+    setSaved(getSavedTours());
+  }, []);
+
+  const handleCancel = (id) => {
+    if (!window.confirm("Cancel this booking? This can't be undone.")) return;
+    setBookings((prev) => prev.filter((b) => b.id !== id));
+  };
+
+  const handleRemoveSaved = (slug) => {
+    removeSavedTour(slug);
+    setSaved(getSavedTours());
+  };
 
   const filtered = useMemo(
-    () => (tab === "All" ? BOOKINGS : BOOKINGS.filter((b) => b.status === tab)),
-    [tab],
+    () => (tab === "All" ? bookings : bookings.filter((b) => b.status === tab)),
+    [tab, bookings],
   );
 
-  const next = BOOKINGS.find((b) => b.status === "Confirmed");
+  const next = bookings.find((b) => b.status === "Confirmed");
 
   return (
     <div style={{ minHeight: "100vh", background: "var(--background)" }}>
-      <Navbar role="tourist" pendingCount={1} unreadMessages={2} />
+      <Navbar role="tourist" />
 
       <main style={{ margin: "0 auto", maxWidth: 1280, padding: "32px 24px" }}>
 
@@ -71,9 +82,13 @@ export default function TouristDashboard({ user }) {
               Your next adventure starts in <strong style={{ color: "var(--foreground)" }}>13 days</strong>.
             </p>
           </div>
-          <button className="btn btn-warm" style={{ display: "flex", alignItems: "center", gap: 6 }}>
-            <Plus size={16} /> Book new tour
-          </button>
+          <Link 
+            to="/tours/cairo-historical-trip" /* هنا بتكتبي الـ slug بتاع الرحلة اللي عايزة تروحي ليها */
+            className="btn btn-warm" 
+            style={{ display: "inline-flex", alignItems: "center", gap: 6, textDecoration: "none" }}
+          >
+            <Plus size={30} /> Book new tour
+          </Link>
         </section>
 
         {/* Hero next-trip card */}
@@ -114,13 +129,12 @@ export default function TouristDashboard({ user }) {
                         {next.guide.rating} · Verified guide
                       </p>
                     </div>
-                    <button className="btn btn-outline btn-sm">Message</button>
                   </div>
                 </div>
                 <div style={{ marginTop: 20, display: "flex", flexWrap: "wrap", gap: 8 }}>
                   <button className="btn btn-outline btn-sm">View tickets</button>
                   <button className="btn btn-outline btn-sm">Reschedule</button>
-                  <button className="btn btn-ghost btn-sm" style={{ color: "var(--destructive)" }}>Cancel</button>
+                  <button className="btn btn-ghost btn-sm" style={{ color: "var(--destructive)" }} onClick={() => handleCancel(next.id)}>Cancel</button>
                 </div>
               </div>
             </div>
@@ -170,10 +184,15 @@ export default function TouristDashboard({ user }) {
                     <p style={{ marginTop: 4, fontSize: 12, color: "var(--muted-foreground)", margin: "4px 0 0" }}>Guide · {b.guide.name}</p>
                   </div>
                   <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 8, flexShrink: 0 }}>
-                    <button className="btn btn-ghost btn-sm" style={{ color: "oklch(0.52 0.12 175)", display: "flex", alignItems: "center", gap: 4 }}>
-                      Details <ChevronRight size={14} />
-                    </button>
-                    {b.status === "Completed" && (
+                    {b.status !== "Completed" ? (
+                      <button
+                        className="btn btn-ghost btn-sm"
+                        style={{ color: "var(--destructive)", display: "flex", alignItems: "center", gap: 4 }}
+                        onClick={() => handleCancel(b.id)}
+                      >
+                        <X size={14} /> Cancel booking
+                      </button>
+                    ) : (
                       <button className="btn btn-outline btn-sm">Leave review</button>
                     )}
                   </div>
@@ -227,29 +246,34 @@ export default function TouristDashboard({ user }) {
                 <h3 style={{ fontSize: 15, fontWeight: 600, letterSpacing: "-0.2px", margin: 0 }}>Saved tours</h3>
                 <Heart size={16} style={{ color: "var(--primary)" }} />
               </div>
-              <ul style={{ listStyle: "none", padding: 0, margin: "14px 0 0", display: "flex", flexDirection: "column", gap: 12 }}>
-                {SAVED.map((s) => (
-                  <li key={s.title} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
-                    <div style={{ minWidth: 0 }}>
-                      <p style={{ fontSize: 13, fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", margin: 0 }}>{s.title}</p>
-                      <p style={{ fontSize: 12, color: "var(--muted-foreground)", margin: 0 }}>{s.city}</p>
-                    </div>
-                    <span style={{ fontSize: 13, fontWeight: 600, color: "var(--primary)", flexShrink: 0 }}>${s.price}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            {/* Referral CTA */}
-            <div style={{ borderRadius: 16, border: "1px solid oklch(0.62 0.18 42 / 0.2)", background: "var(--gradient-warm)", padding: 20, color: "white", boxShadow: "var(--shadow-soft)" }}>
-              <Sparkles size={20} />
-              <p style={{ marginTop: 12, fontSize: 15, fontWeight: 600, margin: "12px 0 4px" }}>Unlock 10% off your next tour</p>
-              <p style={{ fontSize: 12, opacity: 0.85, margin: "0 0 16px" }}>
-                Refer a friend and you both get a discount on your next adventure.
-              </p>
-              <button style={{ background: "white", color: "var(--foreground)", border: "none", borderRadius: 8, padding: "7px 16px", fontSize: 13, fontWeight: 500, cursor: "pointer" }}>
-                Invite friends
-              </button>
+              {saved.length === 0 ? (
+                <p style={{ marginTop: 14, fontSize: 13, color: "var(--muted-foreground)" }}>
+                  Tap the heart icon on any tour to save it here.
+                </p>
+              ) : (
+                <ul style={{ listStyle: "none", padding: 0, margin: "14px 0 0", display: "flex", flexDirection: "column", gap: 12 }}>
+                  {saved.map((s) => (
+                    <li key={s.slug} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+                      <Link to={`/tours/${s.slug}`} style={{ minWidth: 0, textDecoration: "none", color: "inherit" }}>
+                        <p style={{ fontSize: 13, fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", margin: 0 }}>{s.title}</p>
+                        <p style={{ fontSize: 12, color: "var(--muted-foreground)", margin: 0 }}>{s.city}</p>
+                      </Link>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+                        <span style={{ fontSize: 13, fontWeight: 600, color: "var(--primary)" }}>${s.price}</span>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveSaved(s.slug)}
+                          aria-label={`Remove ${s.title} from saved tours`}
+                          className="btn-icon"
+                          style={{ width: 24, height: 24 }}
+                        >
+                          <X size={13} />
+                        </button>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
           </aside>
         </section>
