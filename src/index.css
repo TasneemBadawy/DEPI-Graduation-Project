@@ -85,13 +85,6 @@ body {
 
 /* ===========================
    Components
-=========================== */
-
-.card {
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: 28px;
-  box-shadow: var(--shadow-card);
 }
 
 .btn {
@@ -291,13 +284,4 @@ body {
 
 /* ===========================
    Utilities
-=========================== */
-
-.no-scrollbar {
-  scrollbar-width: none;
-  -ms-overflow-style: none;
-}
-
-.no-scrollbar::-webkit-scrollbar {
-  display: none;
 }
