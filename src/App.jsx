@@ -13,6 +13,7 @@ import GuidePage from "./dashboard/guide/page";
 import TouristPage from "./dashboard/tourist/page";
 import DashboardRoot from "./dashboard/page";
 import TourManagement from "./pages/TourManagement/TourManagement";
+import AdminDashboard from "./pages/AdminDashboard/AdminDashboard";
 
 function App() {
   const { pathname } = useLocation();
@@ -39,6 +40,7 @@ function App() {
           <Route path="/dashboard/guide" element={<GuidePage />} />
           <Route path="/dashboard/guide/tours" element={<TourManagement />} />
           <Route path="/dashboard/tourist" element={<TouristPage />} />
+          <Route path="/dashboard/admin" element={<AdminDashboard />} />
         </Routes>
       </main>
     </div>

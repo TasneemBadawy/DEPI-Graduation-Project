@@ -1,14 +1,22 @@
+import { useState } from "react";
 import { useParams, Navigate } from "react-router-dom";
-import { MapPin } from "lucide-react";
+import { MapPin, Bookmark } from "lucide-react";
 import Button from "../../components/ui/Button";
 import Footer from "../../components/Footer";
 import { EXPERIENCES } from "../../data/experiences";
+import { isActivitySaved, toggleSavedActivity } from "../../lib/savedActivities";
 
 export default function ExperienceDetail() {
   const { slug } = useParams();
   const exp = EXPERIENCES.find((e) => e.slug === slug);
+  const [saved, setSaved] = useState(exp ? isActivitySaved(exp.slug) : false);
 
   if (!exp) return <Navigate to="/experiences" replace />;
+
+  const handleToggleSave = () => {
+    const nowSaved = toggleSavedActivity(exp);
+    setSaved(nowSaved);
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -17,10 +25,24 @@ export default function ExperienceDetail() {
       </div>
 
       <div className="mx-auto max-w-3xl px-5 py-10 sm:px-8">
-        <span className="inline-flex items-center gap-1 text-xs font-semibold uppercase tracking-wide text-secondary">
-          <MapPin className="h-3.5 w-3.5" /> {exp.city}
-        </span>
-        <span className="ml-2 rounded-full bg-muted px-2.5 py-1 text-[11px] font-medium text-muted-foreground">{exp.tag}</span>
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <span className="inline-flex items-center gap-1 text-xs font-semibold uppercase tracking-wide text-secondary">
+              <MapPin className="h-3.5 w-3.5" /> {exp.city}
+            </span>
+            <span className="ml-2 rounded-full bg-muted px-2.5 py-1 text-[11px] font-medium text-muted-foreground">{exp.tag}</span>
+          </div>
+          <button
+            type="button"
+            onClick={handleToggleSave}
+            aria-pressed={saved}
+            aria-label={saved ? "Remove from saved activities" : "Save this activity"}
+            className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-xs font-semibold text-foreground shadow-card transition-colors hover:bg-muted"
+          >
+            <Bookmark className={saved ? "h-4 w-4 fill-primary text-primary" : "h-4 w-4 text-muted-foreground"} />
+            {saved ? "Saved" : "Save"}
+          </button>
+        </div>
         <h1 className="mt-2 text-2xl font-bold text-foreground sm:text-3xl">{exp.title}</h1>
 
         <div className="mt-6 rounded-2xl border border-border bg-card p-6">

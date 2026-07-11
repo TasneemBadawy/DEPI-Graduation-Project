@@ -28,6 +28,11 @@ export function getReviewsForGuide(guideSlug) {
   return readAll().filter((r) => r.guideSlug === guideSlug);
 }
 
+/** Every locally-submitted review across every guide (admin view). */
+export function getAllReviews() {
+  return readAll();
+}
+
 export function getMyReview(guideSlug, reviewerEmail) {
   if (!reviewerEmail) return null;
   return readAll().find((r) => r.guideSlug === guideSlug && r.reviewerEmail === reviewerEmail) || null;

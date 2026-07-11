@@ -26,6 +26,7 @@ export const GUIDES = [
     yearsGuiding: 9,
     toursCompleted: 940,
     responseTime: "within 2 hours",
+    joinedDate: "Jan 2024",
   },
   {
     slug: "hiroshi-tanaka",
@@ -43,6 +44,7 @@ export const GUIDES = [
     yearsGuiding: 7,
     toursCompleted: 610,
     responseTime: "within 1 hour",
+    joinedDate: "Mar 2024",
   },
   {
     slug: "mateo-vargas",
@@ -60,6 +62,7 @@ export const GUIDES = [
     yearsGuiding: 12,
     toursCompleted: 1180,
     responseTime: "within 1 hour",
+    joinedDate: "Nov 2023",
   },
   {
     slug: "amelie-laurent",
@@ -77,6 +80,7 @@ export const GUIDES = [
     yearsGuiding: 6,
     toursCompleted: 430,
     responseTime: "within 3 hours",
+    joinedDate: "Feb 2025",
   },
   {
     slug: "karim-el-sayed",
@@ -89,11 +93,12 @@ export const GUIDES = [
     rating: 4.97,
     reviews: 412,
     specialty: "Pyramids & Egyptology",
-    verified: true,
+    verified: false,
     tagline: "Licensed Egyptologist & Private Guide",
     yearsGuiding: 11,
     toursCompleted: 1280,
     responseTime: "within 1 hour",
+    joinedDate: "Apr 2026",
     about:
       "Cairo-born and Sorbonne-trained, I've spent the last decade walking travelers through the wonders of Ancient Egypt. My tours mix solid history (I'm a licensed Egyptologist) with the small, human stories that bring stones back to life. I tailor every itinerary to your pace, with breaks for mint tea and the best koshari in town.",
     specializations: ["Ancient Egypt", "Hieroglyphics", "Family-friendly", "Photography spots", "Off-the-beaten-path"],
@@ -135,11 +140,12 @@ export const GUIDES = [
     rating: 4.96,
     reviews: 289,
     specialty: "Fjords & adventure",
-    verified: true,
+    verified: false,
     tagline: "Fjords & adventure specialist",
     yearsGuiding: 8,
     toursCompleted: 720,
     responseTime: "within 2 hours",
+    joinedDate: "May 2026",
   },
 ];
 
