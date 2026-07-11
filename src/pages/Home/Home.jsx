@@ -13,7 +13,7 @@ import GuideCard from "../../components/cards/GuideCard";
 import TourCard from "../../components/cards/TourCard";
 import ThingCard from "../../components/cards/ThingCard";
 
-import { GUIDES } from "../../data/guides";
+import { getGuidesWithStatus } from "../../lib/adminStore";
 import { getAllTours } from "../../lib/tourStore";
 import { EXPERIENCES } from "../../data/experiences";
 import { TESTIMONIALS } from "../../data/testimonials";
@@ -25,6 +25,7 @@ export default function Home() {
   // Read fresh on every mount so tours a guide just added/edited on the Tour
   // Management page show up here without needing a hard refresh.
   const tours = getAllTours();
+  const guides = getGuidesWithStatus();
 
   // Lets the navbar (or any link) send someone to "/#some-section" from a
   // different page — once Home has mounted, smooth-scroll to that section.
@@ -51,7 +52,7 @@ export default function Home() {
         actionTo="/guides"
       >
         <Rail>
-          {GUIDES.map((g) => (
+          {guides.map((g) => (
             <GuideCard key={g.slug} {...g} />
           ))}
         </Rail>

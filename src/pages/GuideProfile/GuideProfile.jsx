@@ -7,6 +7,7 @@ import Button from "../../components/ui/Button";
 import TourCard from "../../components/cards/TourCard";
 import Footer from "../../components/Footer";
 import { getGuideBySlug } from "../../data/guides";
+import { isGuideVerified } from "../../lib/adminStore";
 import { getToursByGuide } from "../../lib/tourStore";
 import { getCurrentUser } from "../../lib/auth";
 import { getReviewsForGuide, saveReview, deleteReview } from "../../lib/reviewStore";
@@ -22,7 +23,8 @@ export default function GuideProfile() {
   // freshly-submitted form data is passed via router state instead, keyed by
   // the reserved "preview" slug. Everyone else is looked up normally.
   const isPreview = slug === "preview";
-  const guide = isPreview ? location.state?.guide : getGuideBySlug(slug);
+  const rawGuide = isPreview ? location.state?.guide : getGuideBySlug(slug);
+  const guide = rawGuide && !isPreview ? { ...rawGuide, verified: isGuideVerified(rawGuide.slug) } : rawGuide;
 
   if (!guide) return <Navigate to="/guides" replace />;
 
@@ -70,9 +72,8 @@ export default function GuideProfile() {
             </div>
           </div>
 
-          <div className="mt-6 grid grid-cols-2 gap-3 border-t border-border pt-6 sm:grid-cols-4">
+          <div className="mt-6 grid grid-cols-3 gap-3 border-t border-border pt-6 sm:grid-cols-3">
             <Stat label="Tours completed" value={guide.toursCompleted?.toLocaleString?.() ?? guide.toursCompleted} />
-            <Stat label="Response time" value={guide.responseTime} />
             <Stat label="Years guiding" value={`${guide.yearsGuiding} yrs`} />
             <Stat label="Languages" value={guide.languages.length} />
           </div>

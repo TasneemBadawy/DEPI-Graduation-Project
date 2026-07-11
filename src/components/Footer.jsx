@@ -1,4 +1,5 @@
 import { Compass } from "lucide-react";
+import { Link } from "react-router-dom";
 
 export default function Footer() {
   return (
@@ -22,7 +23,10 @@ export default function Footer() {
       <div className="border-t border-border">
         <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-2 px-5 py-5 text-xs text-muted-foreground sm:flex-row sm:px-8">
           <span>© {new Date().getFullYear()} Nomade Travel Co. All rights reserved.</span>
-          <span>Made with care for travelers worldwide</span>
+          <div className="flex items-center gap-4">
+            <span>Made with care for travelers worldwide</span>
+            <Link to="/dashboard/admin" className="text-muted-foreground/60 hover:text-foreground">Admin</Link>
+          </div>
         </div>
       </div>
     </footer>

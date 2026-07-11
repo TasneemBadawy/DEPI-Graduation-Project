@@ -3,11 +3,12 @@ import { useSearchParams } from "react-router-dom";
 import { Search, X } from "lucide-react";
 import GuideCard from "../../components/cards/GuideCard";
 import Footer from "../../components/Footer";
-import { GUIDES } from "../../data/guides";
+import { getGuidesWithStatus } from "../../lib/adminStore";
 
 export default function Guides() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [query, setQuery] = useState(searchParams.get("q") || "");
+  const allGuides = useMemo(() => getGuidesWithStatus(), []);
 
   const lang = searchParams.get("lang") || "";
   const minRating = searchParams.get("minRating") || "";
@@ -23,7 +24,7 @@ export default function Guides() {
     const langQ = lang.trim().toLowerCase();
     const minR = parseFloat(minRating) || 0;
 
-    return GUIDES.filter((g) => {
+    return allGuides.filter((g) => {
       const matchesQuery =
         !q ||
         [g.name, g.city, g.country, g.specialty, ...(g.languages || [])].join(" ").toLowerCase().includes(q);
@@ -32,7 +33,7 @@ export default function Guides() {
       const matchesRating = !minR || rating >= minR;
       return matchesQuery && matchesLang && matchesRating;
     });
-  }, [query, lang, minRating]);
+  }, [query, lang, minRating, allGuides]);
 
   const hasActiveFilters = Boolean(lang || minRating);
 
