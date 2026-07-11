@@ -2,12 +2,13 @@
 import { useState, useMemo, useEffect } from "react";
 import {
   Plus, Plane, MapPin, CalendarIcon, Clock, Users,
-  Star, Heart, GripVertical, X,
+  Star, Heart, GripVertical, X, Bookmark,
 } from "lucide-react";
 import { Link } from 'react-router-dom';
 import StatusPill from "../ui/StatusPill";
 import Navbar from "../ui/Navbar";
 import { getSavedTours, removeSavedTour } from "../../lib/savedTours";
+import { getSavedActivities, removeSavedActivity } from "../../lib/savedActivities";
 
 /* ── Types ── */
 
@@ -43,9 +44,11 @@ export default function TouristDashboard({ user }) {
   const [tab, setTab] = useState("All");
   const [bookings, setBookings] = useState(BOOKINGS);
   const [saved, setSaved] = useState([]);
+  const [savedActivities, setSavedActivities] = useState([]);
 
   useEffect(() => {
     setSaved(getSavedTours());
+    setSavedActivities(getSavedActivities());
   }, []);
 
   const handleCancel = (id) => {
@@ -56,6 +59,11 @@ export default function TouristDashboard({ user }) {
   const handleRemoveSaved = (slug) => {
     removeSavedTour(slug);
     setSaved(getSavedTours());
+  };
+
+  const handleRemoveSavedActivity = (slug) => {
+    removeSavedActivity(slug);
+    setSavedActivities(getSavedActivities());
   };
 
   const filtered = useMemo(
@@ -264,6 +272,42 @@ export default function TouristDashboard({ user }) {
                           type="button"
                           onClick={() => handleRemoveSaved(s.slug)}
                           aria-label={`Remove ${s.title} from saved tours`}
+                          className="btn-icon"
+                          style={{ width: 24, height: 24 }}
+                        >
+                          <X size={13} />
+                        </button>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+
+            {/* Saved activities */}
+            <div className="card" style={{ padding: 20 }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <h3 style={{ fontSize: 15, fontWeight: 600, letterSpacing: "-0.2px", margin: 0 }}>Saved activities</h3>
+                <Bookmark size={16} style={{ color: "var(--primary)" }} />
+              </div>
+              {savedActivities.length === 0 ? (
+                <p style={{ marginTop: 14, fontSize: 13, color: "var(--muted-foreground)" }}>
+                  Tap the bookmark icon on any activity to save it here.
+                </p>
+              ) : (
+                <ul style={{ listStyle: "none", padding: 0, margin: "14px 0 0", display: "flex", flexDirection: "column", gap: 12 }}>
+                  {savedActivities.map((a) => (
+                    <li key={a.slug} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+                      <Link to={`/experiences/${a.slug}`} style={{ minWidth: 0, textDecoration: "none", color: "inherit" }}>
+                        <p style={{ fontSize: 13, fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", margin: 0 }}>{a.title}</p>
+                        <p style={{ fontSize: 12, color: "var(--muted-foreground)", margin: 0 }}>{a.city}</p>
+                      </Link>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+                        <span style={{ fontSize: 13, fontWeight: 600, color: "var(--primary)" }}>${a.price}</span>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveSavedActivity(a.slug)}
+                          aria-label={`Remove ${a.title} from saved activities`}
                           className="btn-icon"
                           style={{ width: 24, height: 24 }}
                         >
