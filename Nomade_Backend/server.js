@@ -1,4 +1,5 @@
 import express from "express";
+import cors from "cors";
 import { config } from "dotenv";
 import authRoutes from "./routes/authRoutes.js";
 import tourRoutes from "./routes/tourRoutes.js";
@@ -15,6 +16,7 @@ import swaggerDocs from "./swagger/swaggerDocs.js";
 const app = express();
 
 swaggerDocs(app);
+app.use(cors()); // allows the Vite dev server (a different origin) to call this API
 app.use(express.json());
 app.use("/uploads", express.static("uploads"));
 /*const options = {

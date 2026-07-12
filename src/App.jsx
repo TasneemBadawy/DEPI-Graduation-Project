@@ -14,6 +14,7 @@ import TouristPage from "./dashboard/tourist/page";
 import DashboardRoot from "./dashboard/page";
 import TourManagement from "./pages/TourManagement/TourManagement";
 import AdminDashboard from "./pages/AdminDashboard/AdminDashboard";
+import ProtectedRoute from "./components/auth/ProtectedRoute";
 
 function App() {
   const { pathname } = useLocation();
@@ -36,11 +37,46 @@ function App() {
           <Route path="/tours/:slug" element={<TourDetail />} />
           <Route path="/experiences" element={<Experiences />} />
           <Route path="/experiences/:slug" element={<ExperienceDetail />} />
-          <Route path="/dashboard" element={<DashboardRoot />} />
-          <Route path="/dashboard/guide" element={<GuidePage />} />
-          <Route path="/dashboard/guide/tours" element={<TourManagement />} />
-          <Route path="/dashboard/tourist" element={<TouristPage />} />
-          <Route path="/dashboard/admin" element={<AdminDashboard />} />
+          <Route
+            path="/dashboard"
+            element={
+              <ProtectedRoute>
+                <DashboardRoot />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/dashboard/guide"
+            element={
+              <ProtectedRoute role="guide">
+                <GuidePage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/dashboard/guide/tours"
+            element={
+              <ProtectedRoute role="guide">
+                <TourManagement />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/dashboard/tourist"
+            element={
+              <ProtectedRoute role="tourist">
+                <TouristPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/dashboard/admin"
+            element={
+              <ProtectedRoute>
+                <AdminDashboard />
+              </ProtectedRoute>
+            }
+          />
         </Routes>
       </main>
     </div>
