@@ -1,17 +1,12 @@
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useState, useMemo } from "react";
-import { Mail, Lock, Eye, EyeOff, ArrowRight, AlertCircle } from "lucide-react";
+import { Mail, Lock, Eye, EyeOff, ArrowRight, AlertCircle, Loader2 } from "lucide-react";
 import AuthLayout from "../../components/auth/AuthLayout";
 import RoleSelector from "../../components/auth/RoleSelector";
 import AuthTabs from "../../components/auth/AuthTabs";
 import { SocialRow } from "../../components/AuthComponents";
 import { cn } from "../../lib/utils";
-import { setCurrentUser, dashboardPathForRole } from "../../lib/auth";
-
-function nameFromEmail(email) {
-  const local = email.split("@")[0] || "there";
-  return local.charAt(0).toUpperCase() + local.slice(1);
-}
+import { useAuth } from "../../context/AuthContext";
 
 export default function Login() {
   const [role, setRole] = useState("tourist");
@@ -20,7 +15,12 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [keepSignedIn, setKeepSignedIn] = useState(false);
   const [touched, setTouched] = useState({ email: false, password: false });
+  const [submitting, setSubmitting] = useState(false);
+  const [formError, setFormError] = useState("");
+
+  const { login } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const emailError = useMemo(() => {
     if (!touched.email) return "";
@@ -33,15 +33,26 @@ export default function Login() {
     return touched.password && !password ? "Password is required" : "";
   }, [password, touched.password]);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    setFormError("");
     setTouched({ email: true, password: true });
     if (!email || !password || emailError || passwordError) return;
 
-    // No backend yet — this establishes a client-side session using the
-    // role picked above via the shared lib/auth.js helper.
-    setCurrentUser({ name: nameFromEmail(email), email, role });
-    navigate(dashboardPathForRole(role));
+    setSubmitting(true);
+    try {
+      const user = await login(role, { email, password });
+      // If ProtectedRoute redirected here from a private page, send the
+      // person back to where they were headed; otherwise go to their dashboard.
+      const redirectTo = location.state?.from?.pathname;
+      navigate(redirectTo || (user.role === "guide" ? "/dashboard/guide" : "/dashboard/tourist"), {
+        replace: true,
+      });
+    } catch (err) {
+      setFormError(err.message || "Couldn't sign you in. Please try again.");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -54,7 +65,13 @@ export default function Login() {
         <AuthTabs active="signin" />
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form onSubmit={handleSubmit} className="space-y-4" noValidate>
+        {formError && (
+          <p className="flex items-center gap-1.5 rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm font-medium text-destructive">
+            <AlertCircle className="h-4 w-4 shrink-0" /> {formError}
+          </p>
+        )}
+
         <div className="text-left w-full">
           <label htmlFor="email" className="mb-2 block text-sm font-medium text-foreground">Email</label>
           <div className="relative">
@@ -111,8 +128,20 @@ export default function Login() {
           Keep me signed in for 30 days
         </label>
 
-        <button type="submit" className="w-full flex h-12 items-center justify-center gap-2 rounded-lg bg-primary text-base font-semibold text-white hover:brightness-110 duration-150 cursor-pointer">
-          Sign in <ArrowRight className="h-5 w-5" />
+        <button
+          type="submit"
+          disabled={submitting}
+          className="w-full flex h-12 items-center justify-center gap-2 rounded-lg bg-primary text-base font-semibold text-white hover:brightness-110 duration-150 cursor-pointer disabled:cursor-not-allowed disabled:opacity-70"
+        >
+          {submitting ? (
+            <>
+              <Loader2 className="h-5 w-5 animate-spin" /> Signing in…
+            </>
+          ) : (
+            <>
+              Sign in <ArrowRight className="h-5 w-5" />
+            </>
+          )}
         </button>
       </form>
 

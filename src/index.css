@@ -84,8 +84,9 @@ body {
 }
 
 /* ===========================
-   Components
-}
+   Components */
+   
+
 
 .btn {
   display: inline-flex;
@@ -283,5 +284,5 @@ body {
 }
 
 /* ===========================
-   Utilities
-}
+   Utilities  
+=========================== */

@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import {
   User, Mail, Phone, Lock, Eye, EyeOff, ArrowRight,
   CheckCircle2, AlertCircle, Languages, Sparkles, Upload,
-  Link2, Globe,
+  Link2, Globe, Loader2,
 } from "lucide-react";
 import { InstagramIcon, FacebookIcon, LinkedinIcon } from "../../components/icons/BrandIcons";
 import AuthLayout from "../../components/auth/AuthLayout";
@@ -11,20 +11,7 @@ import RoleSelector from "../../components/auth/RoleSelector";
 import AuthTabs from "../../components/auth/AuthTabs";
 import { SocialRow } from "../../components/AuthComponents";
 import { cn } from "../../lib/utils";
-import heroPyramids from "../../assets/hero-pyramids.jpg";
-import { setCurrentUser, dashboardPathForRole } from "../../lib/auth";
-
-/** Builds a small "initials" avatar data-URI so a brand-new guide has a
- *  profile photo without us putting someone else's stock face on their
- *  account before they've uploaded a real one. */
-function initialsAvatar(first, last) {
-  const initials = `${(first?.[0] || "").toUpperCase()}${(last?.[0] || "").toUpperCase()}` || "N";
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200">
-    <rect width="200" height="200" fill="#e15b28"/>
-    <text x="50%" y="53%" font-family="Inter, sans-serif" font-size="80" fill="#ffffff" text-anchor="middle" dominant-baseline="middle">${initials}</text>
-  </svg>`;
-  return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
-}
+import { useAuth } from "../../context/AuthContext";
 
 export default function Register() {
   const [role, setRole] = useState("tourist");
@@ -74,9 +61,10 @@ function Field({ id, label, icon: Icon, type = "text", placeholder, value, onCha
   );
 }
 
-function PasswordInput({ id, placeholder, value, onChange, show, onToggle, onBlur, error }) {
+function PasswordInput({ id, label, placeholder, value, onChange, show, onToggle, onBlur, error, valid }) {
   return (
     <div className="text-left w-full">
+      {label && <label htmlFor={id} className="mb-2 block text-sm font-medium text-foreground">{label}</label>}
       <div className="relative">
         <Lock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <input
@@ -88,7 +76,8 @@ function PasswordInput({ id, placeholder, value, onChange, show, onToggle, onBlu
           placeholder={placeholder}
           className={cn(
             "h-11 w-full rounded-lg border border-border bg-card pl-10 pr-11 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/25 focus:border-primary",
-            error && "border-destructive focus:ring-destructive/25"
+            error && "border-destructive focus:ring-destructive/25",
+            valid && "border-success/60 focus:ring-success/25"
           )}
         />
         <button type="button" onClick={onToggle} className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-1.5 text-muted-foreground hover:bg-muted">
@@ -175,36 +164,113 @@ function FileDrop({ files, onFiles, onRemove }) {
 /* ───────────────────────────── TOURIST FORM ───────────────────────────── */
 
 function TouristRegisterForm() {
-  const [name, setName] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [show, setShow] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
   const [agreed, setAgreed] = useState(false);
-  const [touched, setTouched] = useState({ name: false, email: false, password: false });
+  const [submitting, setSubmitting] = useState(false);
+  const [formError, setFormError] = useState("");
+  const [touched, setTouched] = useState({
+    firstName: false, lastName: false, email: false, password: false, confirmPassword: false,
+  });
+
+  const { register } = useAuth();
   const navigate = useNavigate();
 
-  const nameError = touched.name && name.trim().length < 2 ? "Please enter your full name" : "";
+  const firstNameError = touched.firstName && firstName.trim().length < 2 ? "Please enter your first name" : "";
+  const lastNameError = touched.lastName && lastName.trim().length < 2 ? "Please enter your last name" : "";
   const emailError = touched.email && (!email || !/^\S+@\S+\.\S+$/.test(email)) ? "Enter a valid email address" : "";
-  const passwordError = touched.password && password.length < 8 ? "Password must be at least 8 characters" : "";
+  const passwordError = touched.password && password.length < 6 ? "Password must be at least 6 characters" : "";
+  const confirmPasswordError = touched.confirmPassword && confirmPassword !== password ? "Passwords don't match" : "";
   const strength = getPasswordStrength(password);
 
+  const formIsValid =
+    !firstNameError && !lastNameError && !emailError && !passwordError && !confirmPasswordError &&
+    firstName.trim() && lastName.trim() && email && password && confirmPassword === password && agreed;
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setFormError("");
+    setTouched({ firstName: true, lastName: true, email: true, password: true, confirmPassword: true });
+    if (!formIsValid) return;
+
+    setSubmitting(true);
+    try {
+      const user = await register(
+        "tourist",
+        { FName: firstName.trim(), LName: lastName.trim(), Email: email, Password: password },
+        { email, password }
+      );
+      navigate(user.role === "guide" ? "/dashboard/guide" : "/dashboard/tourist", { replace: true });
+    } catch (err) {
+      setFormError(err.message || "Couldn't create your account. Please try again.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   return (
-    <form
-      onSubmit={(e) => {
-        e.preventDefault();
-        setTouched({ name: true, email: true, password: true });
-        if (!nameError && !emailError && !passwordError && name && agreed) {
-          setCurrentUser({ name: name.trim(), email, role: "tourist" });
-          navigate(dashboardPathForRole("tourist"));
-        }
-      }}
-      className="space-y-4"
-    >
-      <Field id="name" label="Full name" icon={User} placeholder="Layla Hassan" value={name} onChange={setName} onBlur={() => setTouched((t) => ({ ...t, name: true }))} error={nameError} valid={touched.name && !nameError && name.length > 0} />
-      <Field id="email" label="Email" icon={Mail} type="email" placeholder="you@example.com" value={email} onChange={setEmail} onBlur={() => setTouched((t) => ({ ...t, email: true }))} error={emailError} valid={touched.email && !emailError && email.length > 0} />
+    <form onSubmit={handleSubmit} className="space-y-4" noValidate>
+      {formError && (
+        <p className="flex items-center gap-1.5 rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm font-medium text-destructive">
+          <AlertCircle className="h-4 w-4 shrink-0" /> {formError}
+        </p>
+      )}
+
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Field
+          id="firstName"
+          label="First name"
+          icon={User}
+          placeholder="Layla"
+          value={firstName}
+          onChange={setFirstName}
+          onBlur={() => setTouched((t) => ({ ...t, firstName: true }))}
+          error={firstNameError}
+          valid={touched.firstName && !firstNameError && firstName.length > 0}
+        />
+        <Field
+          id="lastName"
+          label="Last name"
+          icon={User}
+          placeholder="Hassan"
+          value={lastName}
+          onChange={setLastName}
+          onBlur={() => setTouched((t) => ({ ...t, lastName: true }))}
+          error={lastNameError}
+          valid={touched.lastName && !lastNameError && lastName.length > 0}
+        />
+      </div>
+
+      <Field
+        id="email"
+        label="Email"
+        icon={Mail}
+        type="email"
+        placeholder="you@example.com"
+        value={email}
+        onChange={setEmail}
+        onBlur={() => setTouched((t) => ({ ...t, email: true }))}
+        error={emailError}
+        valid={touched.email && !emailError && email.length > 0}
+      />
+
       <div>
-        <label className="mb-2 block text-sm font-medium text-foreground text-left">Password</label>
-        <PasswordInput id="t-pwd" placeholder="At least 8 characters" value={password} onChange={setPassword} show={show} onToggle={() => setShow((s) => !s)} onBlur={() => setTouched((t) => ({ ...t, password: true }))} error={passwordError} />
+        <PasswordInput
+          id="t-pwd"
+          label="Password"
+          placeholder="At least 6 characters"
+          value={password}
+          onChange={setPassword}
+          show={show}
+          onToggle={() => setShow((s) => !s)}
+          onBlur={() => setTouched((t) => ({ ...t, password: true }))}
+          error={passwordError}
+        />
         {password && (
           <div className="mt-2 flex items-center gap-2">
             <div className="flex h-1.5 flex-1 gap-1">
@@ -217,13 +283,38 @@ function TouristRegisterForm() {
         )}
       </div>
 
+      <PasswordInput
+        id="t-pwd-confirm"
+        label="Confirm password"
+        placeholder="Re-enter your password"
+        value={confirmPassword}
+        onChange={setConfirmPassword}
+        show={showConfirm}
+        onToggle={() => setShowConfirm((s) => !s)}
+        onBlur={() => setTouched((t) => ({ ...t, confirmPassword: true }))}
+        error={confirmPasswordError}
+        valid={touched.confirmPassword && !confirmPasswordError && confirmPassword.length > 0}
+      />
+
       <label className="flex items-start gap-2 text-sm text-muted-foreground">
         <input type="checkbox" checked={agreed} onChange={(e) => setAgreed(e.target.checked)} className="mt-0.5 h-4 w-4 rounded border-border text-primary focus:ring-primary/25" />
         I agree to the <a href="#" className="font-medium text-primary hover:underline">Terms</a> and <a href="#" className="font-medium text-primary hover:underline">Privacy Policy</a>
       </label>
 
-      <button type="submit" className="w-full flex h-12 items-center justify-center gap-2 rounded-lg bg-primary text-base font-semibold text-white hover:brightness-110 duration-150 cursor-pointer shadow-sm">
-        Create my account <ArrowRight className="h-4 w-4" />
+      <button
+        type="submit"
+        disabled={submitting}
+        className="w-full flex h-12 items-center justify-center gap-2 rounded-lg bg-primary text-base font-semibold text-white hover:brightness-110 duration-150 cursor-pointer shadow-sm disabled:cursor-not-allowed disabled:opacity-70"
+      >
+        {submitting ? (
+          <>
+            <Loader2 className="h-4 w-4 animate-spin" /> Creating your account…
+          </>
+        ) : (
+          <>
+            Create my account <ArrowRight className="h-4 w-4" />
+          </>
+        )}
       </button>
 
       <SocialRow redirectTo="/register" />
@@ -241,9 +332,12 @@ function TouristRegisterForm() {
 /* ───────────────────────────── GUIDE FORM ───────────────────────────── */
 
 function GuideRegisterForm() {
-  const navigate = useNavigate();
   const [show, setShow] = useState(false);
-  const [error, setError] = useState("");
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [formError, setFormError] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [confirmTouched, setConfirmTouched] = useState(false);
   const [data, setData] = useState({
     firstName: "", lastName: "", email: "", phone: "", country: "", city: "",
     bio: "", languages: [], specializations: [], files: [], password: "",
@@ -251,51 +345,70 @@ function GuideRegisterForm() {
   });
   const set = (k, v) => setData((d) => ({ ...d, [k]: v }));
 
-  const handleSubmit = (e) => {
+  const { register } = useAuth();
+  const navigate = useNavigate();
+
+  const confirmPasswordError = confirmTouched && confirmPassword !== data.password ? "Passwords don't match" : "";
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    setFormError("");
+    setConfirmTouched(true);
 
     if (!data.firstName.trim() || !data.lastName.trim() || !data.email.trim()) {
-      setError("First name, last name, and email are required.");
+      setFormError("First name, last name, and email are required.");
+      return;
+    }
+    if (!/^\S+@\S+\.\S+$/.test(data.email)) {
+      setFormError("Enter a valid email address.");
+      return;
+    }
+    if (!data.password || data.password.length < 6) {
+      setFormError("Password must be at least 6 characters.");
+      return;
+    }
+    if (confirmPassword !== data.password) {
+      setFormError("Passwords don't match.");
       return;
     }
 
-    const name = `${data.firstName.trim()} ${data.lastName.trim()}`;
-    const slugBase = name.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+    // The backend's guide-register route expects multipart/form-data (it
+    // can accept a Profile_Image upload), so we build a FormData payload
+    // instead of plain JSON.
+    const formData = new FormData();
+    formData.append("FName", data.firstName.trim());
+    formData.append("LName", data.lastName.trim());
+    formData.append("Email", data.email.trim());
+    formData.append("Password", data.password);
+    if (data.country) formData.append("Country", data.country);
+    if (data.bio) formData.append("About", data.bio);
+    if (data.facebook) formData.append("FaceBook", data.facebook);
+    if (data.linkedin) formData.append("Linkedin", data.linkedin);
+    if (data.instagram) formData.append("Instagram", data.instagram);
+    if (data.phone) formData.append("phoneNumbers", data.phone);
+    data.specializations.forEach((s) => formData.append("specializations", s));
+    data.languages.forEach((l) => formData.append("languages", l));
+    // Certificate uploads aren't stored as files by the backend yet (the
+    // Guide_Certificates table only holds text), so we send the file names
+    // as a best-effort placeholder until that's supported server-side.
+    data.files.forEach((f) => formData.append("certificates", f.name));
 
-    const newGuide = {
-      slug: slugBase || "new-guide",
-      name,
-      photo: initialsAvatar(data.firstName, data.lastName),
-      cover: heroPyramids,
-      city: data.city || "—",
-      country: data.country || "",
-      languages: data.languages.length ? data.languages : ["English"],
-      rating: "New",
-      reviews: 0,
-      specialty: data.specializations[0] || "General tours",
-      verified: false,
-      tagline: data.specializations.length ? data.specializations.join(" · ") : "New Nomade guide",
-      yearsGuiding: 0,
-      toursCompleted: 0,
-      responseTime: "New guide — no reviews yet",
-      about: data.bio || `${name} just joined Nomade and hasn't written a bio yet.`,
-      specializations: data.specializations,
-      trust: ["Application submitted — pending Nomade verification"],
-    };
-
-    // No backend yet, so the new guide doesn't exist in any dataset. We
-    // stash the freshly-built record on the session as `profile` so the
-    // Guide dashboard (and its "preview public profile" link, if it uses
-    // one) can read it.
-    setCurrentUser({ name, email: data.email, role: "guide", profile: newGuide });
-    navigate(dashboardPathForRole("guide"));
+    setSubmitting(true);
+    try {
+      const user = await register("guide", formData, { email: data.email, password: data.password });
+      navigate(user.role === "guide" ? "/dashboard/guide" : "/dashboard/tourist", { replace: true });
+    } catch (err) {
+      setFormError(err.message || "Couldn't create your guide account. Please try again.");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-2">
-      {error && (
+    <form onSubmit={handleSubmit} className="space-y-2" noValidate>
+      {formError && (
         <p className="flex items-center gap-1.5 rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm font-medium text-destructive">
-          <AlertCircle className="h-4 w-4 shrink-0" /> {error}
+          <AlertCircle className="h-4 w-4 shrink-0" /> {formError}
         </p>
       )}
       <Section title="Personal information" subtitle="Tell travelers who you are.">
@@ -348,7 +461,19 @@ function GuideRegisterForm() {
       </Section>
 
       <Section title="Account password" subtitle="Used to sign in to your guide dashboard.">
-        <PasswordInput id="g-pwd" placeholder="At least 8 characters" value={data.password} onChange={(v) => set("password", v)} show={show} onToggle={() => setShow((s) => !s)} />
+        <PasswordInput id="g-pwd" placeholder="At least 6 characters" value={data.password} onChange={(v) => set("password", v)} show={show} onToggle={() => setShow((s) => !s)} />
+        <div className="mt-4">
+          <PasswordInput
+            id="g-pwd-confirm"
+            placeholder="Re-enter your password"
+            value={confirmPassword}
+            onChange={setConfirmPassword}
+            show={showConfirm}
+            onToggle={() => setShowConfirm((s) => !s)}
+            onBlur={() => setConfirmTouched(true)}
+            error={confirmPasswordError}
+          />
+        </div>
       </Section>
 
       <label className="flex items-start gap-2 text-sm text-muted-foreground">
@@ -356,10 +481,21 @@ function GuideRegisterForm() {
         I confirm my information is accurate and agree to Nomade's <a href="#" className="font-medium text-primary hover:underline">Guide Terms</a>.
       </label>
 
-      <button type="submit" className="w-full flex h-12 items-center justify-center gap-2 rounded-lg bg-primary font-semibold text-white hover:brightness-110 cursor-pointer shadow-sm">
-        Sign up as a guide <ArrowRight className="h-4 w-4" />
+      <button
+        type="submit"
+        disabled={submitting}
+        className="w-full flex h-12 items-center justify-center gap-2 rounded-lg bg-primary font-semibold text-white hover:brightness-110 cursor-pointer shadow-sm disabled:cursor-not-allowed disabled:opacity-70"
+      >
+        {submitting ? (
+          <>
+            <Loader2 className="h-4 w-4 animate-spin" /> Creating your account…
+          </>
+        ) : (
+          <>
+            Sign up as a guide <ArrowRight className="h-4 w-4" />
+          </>
+        )}
       </button>
     </form>
   );
 }
-
