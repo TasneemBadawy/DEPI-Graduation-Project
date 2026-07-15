@@ -24,9 +24,7 @@ const validateSocialMediaUrl = (url) => {
 export const registerTourist = async (req, res) => {
   const { FName, LName, Email, Password } = req.body;
 
-  const Profile_Image = req.file
-    ? req.file.path
-    : null;
+  const Profile_Image = req.file ? req.file.path : null;
 
   // Validation
   if (!FName || FName.trim() === "" || !LName || LName.trim() === "") {
@@ -46,17 +44,16 @@ export const registerTourist = async (req, res) => {
   try {
     const existedUser = await findTouristByEmail(Email);
     if (existedUser) {
-      return res.status(400).json({ error: "Email is already registered." });
+      return res.status(400).json({ error: "Email is already exist." });
     }
 
     const hashPassword = await bcrypt.hash(Password, 10);
-    await createTourist(FName, LName, Email, hashPassword , Profile_Image);
+    await createTourist(FName, LName, Email, hashPassword, Profile_Image);
 
-    res.status(201).json({ 
+    res.status(201).json({
       message: "Tourist registered successfully.",
-       Profile_Image
-       });
-
+      Profile_Image,
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -133,9 +130,7 @@ export const registerGuide = async (req, res) => {
     languages = [],
   } = req.body;
 
-   const Profile_Image = req.file
-    ? req.file.path
-    : null;
+  const Profile_Image = req.file ? req.file.path : null;
 
   // Validation
   const errors = [];
@@ -185,11 +180,12 @@ export const registerGuide = async (req, res) => {
       specializations,
       certificates,
       languages,
-      Profile_Image
+      Profile_Image,
     );
 
     res.status(201).json({
-      message: "Guide registered successfully", Profile_Image
+      message: "Guide registered successfully",
+      Profile_Image,
     });
   } catch (err) {
     console.error("Guide registration error:", err);

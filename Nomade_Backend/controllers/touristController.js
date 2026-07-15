@@ -4,6 +4,7 @@ import {
   findTouristByEmail,
   getTouristById,
   updateTouristProfileInDB,
+  deleteTouristById,
 } from "../models/touristModel.js";
 
 // check if email if valid
@@ -70,5 +71,27 @@ export const updateTouristProfile = async (req, res) => {
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
+  }
+};
+/***************************  Delete Tourist By Id ***************************/
+export const deleteTourist = async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const result = await deleteTouristById(id);
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({
+        message: "Tourist not found",
+      });
+    }
+
+    res.status(200).json({
+      message: "Tourist deleted successfully",
+    });
+  } catch (err) {
+    res.status(500).json({
+      error: err.message,
+    });
   }
 };

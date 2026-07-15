@@ -11,32 +11,67 @@ export const findTouristByEmail = (Email) => {
   });
 };
 
-export const createTourist = (FName, LName, Email, Password , Profile_Image) => {
+export const createTourist = (FName, LName, Email, Password, Profile_Image) => {
   return new Promise((resolve, reject) => {
+<<<<<<< HEAD
     const sql = `INSERT INTO User (FName, LName, Email, Password , Profile_Image) VALUES (?, ?, ?, ? ,?)`;
     db.query(sql, [FName, LName, Email, Password , Profile_Image], (err, result) => {
       if (err) reject(err);
       else resolve(result);
     });
+=======
+    const sql = `INSERT INTO User (FName, LName, Email, Password , Profile_Image) VALUES (?, ?, ?, ?,?)`;
+    db.query(
+      sql,
+      [FName, LName, Email, Password, Profile_Image],
+      (err, result) => {
+        if (err) reject(err);
+        else resolve(result);
+      },
+    );
+>>>>>>> 0ae9d2ba25712ba0e430d3ee5617272d731970cd
   });
 };
 
 export const getTouristById = (id) => {
   return new Promise((resolve, reject) => {
-    const sql = `SELECT User_ID, FName, LName, Email FROM User WHERE User_ID = ?`;
+    const sql = `SELECT *FROM User WHERE User_ID = ?`;
     db.query(sql, [id], (err, result) => {
       if (err) reject(err);
-      else resolve(result[0]);
+      if (result.length === 0) return resolve(null);
+      else {
+        const tourist = result[0];
+        delete tourist.Password;
+        resolve(tourist);
+      }
     });
   });
 };
 
-export const updateTouristProfileInDB = (id, FName, LName, Email) => {
+export const updateTouristProfileInDB = (
+  id,
+  FName,
+  LName,
+  Email,
+  Profile_Image,
+) => {
   return new Promise((resolve, reject) => {
-    const sql = `UPDATE User SET FName = ?, LName = ?, Email = ? WHERE User_ID = ?`;
-    db.query(sql, [FName, LName, Email, id], (err, result) => {
+    const sql = `UPDATE User SET FName = ?, LName = ?, Email = ?, Profile_Image = ? WHERE User_ID = ?`;
+    db.query(sql, [FName, LName, Email, Profile_Image, id], (err, result) => {
       if (err) reject(err);
       else resolve(result);
+    });
+  });
+};
+
+// Delete tourist by ID
+export const deleteTouristById = (touristId) => {
+  return new Promise((resolve, reject) => {
+    const sql = `DELETE FROM User WHERE User_ID = ?`;
+
+    db.query(sql, [touristId], (err, result) => {
+      if (err) return reject(err);
+      resolve(result);
     });
   });
 };
