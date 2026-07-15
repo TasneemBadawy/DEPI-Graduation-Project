@@ -78,7 +78,7 @@ export const createGuide = async (
       // Insert guide
       const guideSql = `
         INSERT INTO Tourguide (FName, LName, Email, Password, Country, About, FaceBook, Linkedin, Instagram , Profile_Image)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?,?)
       `;
 
       db.query(

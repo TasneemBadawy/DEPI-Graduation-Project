@@ -13,7 +13,7 @@ export const findTouristByEmail = (Email) => {
 
 export const createTourist = (FName, LName, Email, Password , Profile_Image) => {
   return new Promise((resolve, reject) => {
-    const sql = `INSERT INTO User (FName, LName, Email, Password , Profile_Image) VALUES (?, ?, ?, ?)`;
+    const sql = `INSERT INTO User (FName, LName, Email, Password , Profile_Image) VALUES (?, ?, ?, ? ,?)`;
     db.query(sql, [FName, LName, Email, Password , Profile_Image], (err, result) => {
       if (err) reject(err);
       else resolve(result);
