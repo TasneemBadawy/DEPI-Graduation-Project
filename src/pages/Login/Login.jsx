@@ -8,6 +8,7 @@ import { SocialRow } from "../../components/AuthComponents";
 import { cn } from "../../lib/utils";
 import { useAuth } from "../../context/AuthContext";
 
+
 export default function Login() {
   const [role, setRole] = useState("tourist");
   const [email, setEmail] = useState("");
@@ -19,6 +20,7 @@ export default function Login() {
   const [formError, setFormError] = useState("");
 
   const { login } = useAuth();
+  
   const navigate = useNavigate();
   const location = useLocation();
 
