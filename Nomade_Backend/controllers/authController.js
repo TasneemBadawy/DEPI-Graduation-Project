@@ -17,7 +17,7 @@ const validatePassword = (password) => {
 const validateSocialMediaUrl = (url) => {
   if (!url || url === "") return true;
   const urlRegex =
-    /^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w\.-]*)*\/?$/;
+  /^(https?:\/\/)?([\da-z.-]+)\.([a-z.]{2,6})(\/[\w.-]*)*\/?$/i;
   return urlRegex.test(url);
 };
 
@@ -56,8 +56,13 @@ export const registerTourist = async (req, res) => {
       Profile_Image,
     });
   } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+  console.error("❌ Registration error:", err);  
+  console.error("❌ Error stack:", err.stack);    
+  res.status(500).json({ 
+    error: err.message,
+    stack: err.stack  
+  });
+}
 };
 
 /*************************** Login Tourist ***************************/

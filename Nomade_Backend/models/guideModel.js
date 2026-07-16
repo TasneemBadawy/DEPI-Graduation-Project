@@ -57,7 +57,7 @@ export const findGuideByEmail = (Email) => {
 };
 
 // Create guide with all related data
-export const createGuide = async (
+export const createGuide = (
   FName,
   LName,
   Email,
@@ -73,12 +73,12 @@ export const createGuide = async (
   languages = [],
   Profile_Image
 ) => {
-  return new Promise(async (resolve, reject) => {
+  return new Promise((resolve, reject) => {
     try {
-      // Insert guide
       const guideSql = `
-        INSERT INTO Tourguide (FName, LName, Email, Password, Country, About, FaceBook, Linkedin, Instagram , Profile_Image)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?,?)
+        INSERT INTO Tourguide
+        (FName, LName, Email, Password, Country, About, FaceBook, Linkedin, Instagram, Profile_Image)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `;
 
       db.query(
@@ -93,63 +93,67 @@ export const createGuide = async (
           FaceBook,
           Linkedin,
           Instagram,
-          Profile_Image
+          Profile_Image,
         ],
         async (err, result) => {
           if (err) return reject(err);
 
-          const guideId = result.insertId;
+          try {
+            const guideId = result.insertId;
 
-          // Insert phone numbers
-          if (phoneNumbers && phoneNumbers.length > 0) {
-            const phoneSql = `INSERT INTO Guide_PhoneNumbers (G_ID, Phone_Number) VALUES ?`;
-            const phoneValues = phoneNumbers.map((phone) => [guideId, phone]);
-            await new Promise((resolvePhone, rejectPhone) => {
-              db.query(phoneSql, [phoneValues], (phoneErr) => {
-                if (phoneErr) rejectPhone(phoneErr);
-                else resolvePhone();
+            if (phoneNumbers.length) {
+              const phoneValues = phoneNumbers.map((p) => [guideId, p]);
+
+              await new Promise((res, rej) => {
+                db.query(
+                  "INSERT INTO Guide_PhoneNumbers (G_ID, Phone_Number) VALUES ?",
+                  [phoneValues],
+                  (e) => (e ? rej(e) : res())
+                );
               });
-            });
-          }
+            }
 
-          // Insert specializations
-          if (specializations && specializations.length > 0) {
-            const specSql = `INSERT INTO Guide_Specializations (G_ID, Specialization) VALUES ?`;
-            const specValues = specializations.map((spec) => [guideId, spec]);
-            await new Promise((resolveSpec, rejectSpec) => {
-              db.query(specSql, [specValues], (specErr) => {
-                if (specErr) rejectSpec(specErr);
-                else resolveSpec();
+            if (specializations.length) {
+              const values = specializations.map((s) => [guideId, s]);
+
+              await new Promise((res, rej) => {
+                db.query(
+                  "INSERT INTO Guide_Specializations (G_ID, Specialization) VALUES ?",
+                  [values],
+                  (e) => (e ? rej(e) : res())
+                );
               });
-            });
-          }
+            }
 
-          // Insert certificates
-          if (certificates && certificates.length > 0) {
-            const certSql = `INSERT INTO Guide_Certificates (G_ID, Certificate) VALUES ?`;
-            const certValues = certificates.map((cert) => [guideId, cert]);
-            await new Promise((resolveCert, rejectCert) => {
-              db.query(certSql, [certValues], (certErr) => {
-                if (certErr) rejectCert(certErr);
-                else resolveCert();
+            if (certificates.length) {
+              const values = certificates.map((c) => [guideId, c]);
+
+              await new Promise((res, rej) => {
+                db.query(
+                  "INSERT INTO Guide_Certificates (G_ID, Certificate) VALUES ?",
+                  [values],
+                  (e) => (e ? rej(e) : res())
+                );
               });
-            });
-          }
+            }
 
-          // Insert languages
-          if (languages && languages.length > 0) {
-            const langSql = `INSERT INTO Guide_Languages (G_ID, Language) VALUES ?`;
-            const langValues = languages.map((lang) => [guideId, lang]);
-            await new Promise((resolveLang, rejectLang) => {
-              db.query(langSql, [langValues], (langErr) => {
-                if (langErr) rejectLang(langErr);
-                else resolveLang();
+            if (languages.length) {
+              const values = languages.map((l) => [guideId, l]);
+
+              await new Promise((res, rej) => {
+                db.query(
+                  "INSERT INTO Guide_Languages (G_ID, Language) VALUES ?",
+                  [values],
+                  (e) => (e ? rej(e) : res())
+                );
               });
-            });
-          }
+            }
 
-          resolve({ guideId, inserted: true });
-        },
+            resolve({ guideId, inserted: true });
+          } catch (e) {
+            reject(e);
+          }
+        }
       );
     } catch (err) {
       reject(err);

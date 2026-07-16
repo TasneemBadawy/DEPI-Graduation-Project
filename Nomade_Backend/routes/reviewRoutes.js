@@ -58,8 +58,7 @@ const router = express.Router();
  *         description: Internal server error.
  */
 
-router.post("/", logInAuthMiddleware, addReview);
-
+router.post("/reviews", logInAuthMiddleware, addReview);
 /**
  * @swagger
  * /reviews/guide/{guideId}:
@@ -113,8 +112,7 @@ router.post("/", logInAuthMiddleware, addReview);
  *         description: Internal server error.
  */
 
-router.get("/place/:guideId", getReviewsWithPlace);
-
+router.get("/reviews/place/:guideId", getReviewsWithPlace);
 /**
  * @swagger
  * /reviews/user/{id}:
@@ -140,8 +138,7 @@ router.get("/place/:guideId", getReviewsWithPlace);
  *         description: Internal server error.
  */
 
-router.get("/user/:id", getReviewsWithUserId);
-
+router.get("/reviews/user/:id", getReviewsWithUserId);
 /**
  * @swagger
  * /reviews/{id}:
@@ -173,6 +170,5 @@ router.get("/user/:id", getReviewsWithUserId);
  *         description: Internal server error.
  */
 
-router.delete("/:id", logInAuthMiddleware, RemoveReview);
-
+router.delete("/reviews/:id", logInAuthMiddleware, RemoveReview);
 export default router;
