@@ -2,7 +2,14 @@ import { createReview , getReviewsByPlace , getReviewsByUserId , deleteReview , 
 
 // add a review
 export const addReview = async(req , res) =>{
-  const{User_ID, Place, Title, Rate, username, Content}= req.body;
+  const{
+    User_ID,
+    Guide_ID,
+    Title,
+    Rate,
+    username,
+    Content
+ }= req.body;
        if (!Content) {
          return res.status(400).json({
          message: "Review content is required"
@@ -17,7 +24,7 @@ export const addReview = async(req , res) =>{
 
 
   try{
-     await createReview(User_ID, Place, Title, Rate, username, Content);
+     await createReview(User_ID, Guide_ID, Title, Rate, username, Content);
 
       res.status(201).json({
       message: "Review created successfully",

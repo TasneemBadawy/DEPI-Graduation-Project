@@ -1,11 +1,8 @@
 import apiClient from "./apiClient";
 
 /**
- * Talks to the real backend (routes/tourRoutes.js) instead of localStorage.
- * Every page that lists tours (Home, /tours, TourDetail, TourManagement,
- * a guide's public profile) should keep reading through the functions
- * below rather than calling apiClient directly, so the response-shape
- * mapping only lives in one place.
+ * Talks to the real backend (routes/tourRoutes.js).
+ * Every page that lists tours should use these functions.
  */
 
 export function slugify(text) {
@@ -30,17 +27,6 @@ function tourIdFromSlug(slug) {
 
 /**
  * Maps a raw backend tour row to the shape TourCard / TourDetail expect.
- *
- * NOTE: the backend doesn't document a response schema for GET /api/Tours
- * or GET /api/get_Tour/:Tour_ID, and there's no documented field linking a
- * tour to the guide who created it. Until that's confirmed:
- *  - `image` assumes the response includes an `Images` array (matching the
- *    `images` upload field name, capitalized like other fields e.g.
- *    Tour_name/Price_per_person). THIS IS UNCONFIRMED — please verify
- *    against the real response and I'll fix the key name.
- *  - `guideSlug` / `guideKey` are left undefined since no such field is
- *    documented. getToursByGuide/getMyTours can't filter correctly until
- *    that's resolved (see below).
  */
 function normalizeTour(raw) {
   return {
@@ -51,54 +37,86 @@ function normalizeTour(raw) {
     country: raw.Country,
     street: raw.Street,
     price: raw.Price_per_person,
-    duration: `${raw.Days} day${raw.Days === 1 ? "" : "s"} · ${raw.Nights} night${raw.Nights === 1 ? "" : "s"}`,
+    duration: `${raw.Days || 1} day${raw.Days === 1 ? "" : "s"} · ${raw.Nights || 0} night${raw.Nights === 1 ? "" : "s"}`,
     groupSize: "Flexible",
     description: raw.Description,
-    // UNCONFIRMED key name — see note above.
-    image: Array.isArray(raw.Images) ? raw.Images[0] : raw.Image ?? null,
+    image: Array.isArray(raw.images) ? raw.images[0] : raw.Image_URL || null,
     rating: raw.rating ?? "New",
     reviews: raw.reviews ?? 0,
-    // UNCONFIRMED — no documented guide-ownership field yet.
-    guideSlug: raw.guideSlug ?? undefined,
-    guideKey: raw.Guide_ID ?? undefined,
+    guideId: raw.Guide_ID,
     raw,
   };
 }
 
 export async function getAllTours() {
-  const { data } = await apiClient.get("/api/Tours");
-  return (Array.isArray(data) ? data : data.tours ?? []).map(normalizeTour);
+  try {
+    const response = await apiClient.get("/api/Tours");
+    console.log("API Response:", response.data);
+    
+    // Handle different response formats
+    let data = response.data;
+    
+    // If data is an object with a data property
+    if (data && typeof data === 'object' && !Array.isArray(data)) {
+      if (data.data) {
+        data = data.data;
+      } else if (data.tours) {
+        data = data.tours;
+      }
+    }
+    
+    // If data is not an array, return empty array
+    if (!Array.isArray(data)) {
+      console.warn("API returned non-array data:", data);
+      return [];
+    }
+    
+    return data.map(normalizeTour);
+  } catch (error) {
+    console.error("Error fetching tours:", error);
+    return [];
+  }
 }
 
 export async function getOneTour(slug) {
-  const id = tourIdFromSlug(slug);
-  if (!id) return null;
-  const { data } = await apiClient.get(`/api/get_Tour/${id}`);
-  const raw = data.tour ?? data;
-  return raw ? normalizeTour(raw) : null;
+  try {
+    const id = tourIdFromSlug(slug);
+    if (!id) return null;
+    const response = await apiClient.get(`/api/get_Tour/${id}`);
+    const raw = response.data.tour ?? response.data;
+    return raw ? normalizeTour(raw) : null;
+  } catch (error) {
+    console.error("Error fetching tour:", error);
+    return null;
+  }
 }
 
-// BLOCKED: no documented field ties a tour to its guide. Until that's
-// confirmed this filters client-side against whatever guideSlug ends up
-// populated (currently always undefined, so this returns []).
-export async function getToursByGuide(guideSlug) {
+export async function getToursByGuide(guideId) {
   const all = await getAllTours();
-  return all.filter((t) => t.guideSlug === guideSlug);
+  return all.filter((t) => t.guideId === Number(guideId));
 }
 
-// BLOCKED: same issue — see note above. Also, there is no backend endpoint
-// scoped to "tours for the logged-in guide"; this fetches all tours and
-// filters client-side, which only works once tours carry a guide-owner field.
-export async function getMyTours(guideKey) {
-  const all = await getAllTours();
-  return all.filter((t) => t.guideKey === guideKey);
+export async function getMyTours() {
+  // Import getCurrentUser here to avoid circular dependency
+  const { getCurrentUser } = await import("./auth");
+  const user = getCurrentUser();
+  if (!user) return [];
+  const guideId = user.id || user.Guide_ID;
+  if (!guideId) return [];
+  return getToursByGuide(guideId);
 }
 
 /**
- * POST /api/add-tour — multipart/form-data, JWT required (attached
- * automatically by apiClient's interceptor).
+ * POST /api/add-tour — multipart/form-data, JWT required
  */
-export async function addTour(guideKey, guideSlug, data) {
+export async function addTour(data) {
+  const { getCurrentUser } = await import("./auth");
+  const user = getCurrentUser();
+  if (!user) throw new Error("You must be logged in to add a tour");
+
+  const guideId = user.id || user.Guide_ID;
+  if (!guideId) throw new Error("Guide ID not found. Please contact support.");
+
   const formData = new FormData();
   formData.append("Tour_name", data.title);
   formData.append("Price_per_person", data.price);
@@ -108,34 +126,42 @@ export async function addTour(guideKey, guideSlug, data) {
   formData.append("Description", data.description || "");
   formData.append("Days", data.days ?? 1);
   formData.append("Nights", data.nights ?? 0);
-  // data.image (a single base64 preview in the current UI) isn't yet wired
-  // to the multi-file `images` field the backend expects — see note below.
+  formData.append("Guide_ID", guideId);
+
   if (data.imageFiles?.length) {
     data.imageFiles.forEach((file) => formData.append("images", file));
   }
 
-  const { data: response } = await apiClient.post("/api/add-tour", formData);
-  return response;
-}
-
-// BLOCKED: tourRoutes.js has no PUT/PATCH route for updating a tour.
-// Leaving this as a clear error rather than silently no-op-ing or guessing
-// a URL, so TourManagement's edit flow fails loudly instead of pretending
-// to work.
-export async function updateTour(/* slug, data */) {
-  throw new Error(
-    "Updating a tour isn't supported by the backend yet — no update endpoint exists in tourRoutes.js."
-  );
+  const response = await apiClient.post("/api/add-tour", formData);
+  return response.data;
 }
 
 /**
- * DELETE /api/delete_Tour/:Tour_ID — JWT required per the Swagger doc,
- * though note the route itself isn't wrapped in logInAuthMiddleware in the
- * code you sent (only the Swagger comment claims 401/403). Flagging in
- * case that's a backend oversight.
+ * PUT /api/update_Tour/:Tour_ID
+ */
+export async function updateTour(slug, data) {
+  const id = tourIdFromSlug(slug);
+  if (!id) throw new Error("Couldn't resolve a tour id from this slug.");
+
+  const response = await apiClient.put(`/api/update_Tour/${id}`, {
+    Tour_name: data.title,
+    Price_per_person: data.price,
+    Country: data.country || "",
+    City: data.city,
+    Street: data.street || "",
+    Description: data.description || "",
+    Days: data.days ?? 1,
+    Nights: data.nights ?? 0,
+  });
+  return response.data;
+}
+
+/**
+ * DELETE /api/delete_Tour/:Tour_ID
  */
 export async function deleteTour(slug) {
   const id = tourIdFromSlug(slug);
   if (!id) throw new Error("Couldn't resolve a tour id from this slug.");
+  
   await apiClient.delete(`/api/delete_Tour/${id}`);
 }

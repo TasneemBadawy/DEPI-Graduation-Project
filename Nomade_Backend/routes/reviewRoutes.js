@@ -62,30 +62,58 @@ router.post("/", logInAuthMiddleware, addReview);
 
 /**
  * @swagger
- * /reviews/place/{place}:
+ * /reviews/guide/{guideId}:
  *   get:
  *     tags:
  *       - Reviews
- *     summary: Get reviews by place
- *     description: Retrieve all reviews for a specific place.
+ *     summary: Get reviews by guide ID
+ *     description: Retrieve all reviews written for a specific tour guide.
  *     parameters:
  *       - in: path
- *         name: place
+ *         name: guideId
  *         required: true
- *         description: Place name
+ *         description: Guide ID
  *         schema:
- *           type: string
- *         example: Cairo Tower
+ *           type: integer
+ *         example: 4
  *     responses:
  *       200:
  *         description: Reviews retrieved successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   Review_ID:
+ *                     type: integer
+ *                     example: 1
+ *                   User_ID:
+ *                     type: integer
+ *                     example: 3
+ *                   Guide_ID:
+ *                     type: integer
+ *                     example: 4
+ *                   Title:
+ *                     type: string
+ *                     example: Amazing Experience
+ *                   Rate:
+ *                     type: integer
+ *                     example: 5
+ *                   username:
+ *                     type: string
+ *                     example: Tasneem
+ *                   Content:
+ *                     type: string
+ *                     example: The guide was very professional and friendly.
  *       404:
- *         description: No reviews found.
+ *         description: No reviews found for this guide.
  *       500:
  *         description: Internal server error.
  */
 
-router.get("/place/:place", getReviewsWithPlace);
+router.get("/place/:guideId", getReviewsWithPlace);
 
 /**
  * @swagger

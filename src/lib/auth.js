@@ -2,21 +2,12 @@
  * Core authentication layer.
  *
  * Talks to the real Express/Node backend (Nomade_Backend/routes/authRoutes.js)
- * and persists the session (JWT token + normalized user) to localStorage so
- * it survives page refreshes. Every other file in the app (dashboards,
- * GuideProfile, TourManagement, etc.) reads the session through
- * `getCurrentUser()`, so that function's shape is kept stable on purpose.
- *
- * For a reactive session (components that need to re-render when the user
- * logs in/out) use `src/context/AuthContext.jsx`, which wraps everything
- * exported here in a React Context + `useAuth()` hook.
+ * and persists the session (JWT token + normalized user) to localStorage.
  */
 
 const TOKEN_KEY = "nomade_token";
 const USER_KEY = "nomade_current_user";
 
-// Point this at your backend root URL. 
-// We removed '/api' from here so paths like '/api/auth/tourist/register' won't duplicate to '/api/api/'.
 export const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
 /* ─────────────────────────── session storage ─────────────────────────── */
@@ -72,9 +63,9 @@ export function dashboardPathForRole(role) {
 
 /** Flattens raw SQL user rows from different tables into one predictable shape. */
 function normalizeUser(raw, role) {
+  const id = raw?.User_ID ?? raw?.Guide_ID ?? raw?.id ?? null;
   const firstName = raw?.FName ?? raw?.firstName ?? "";
   const lastName = raw?.LName ?? raw?.lastName ?? "";
-  const id = raw?.User_ID ?? raw?.Guide_ID ?? raw?.id ?? null;
 
   return {
     id,
@@ -90,6 +81,8 @@ function normalizeUser(raw, role) {
     specializations: raw?.specializations ?? undefined,
     certificates: raw?.certificates ?? undefined,
     languages: raw?.languages ?? undefined,
+    Guide_ID: raw?.Guide_ID ?? null,
+    User_ID: raw?.User_ID ?? null,
     raw,
   };
 }

@@ -22,13 +22,38 @@ import heroPyramids from "../../assets/hero-pyramids.jpg";
 
 export default function Home() {
   const location = useLocation();
-  // Read fresh on every mount so tours a guide just added/edited on the Tour
-  // Management page show up here without needing a hard refresh.
-  const tours = getAllTours();
-  const guides = getGuidesWithStatus();
+  const [tours, setTours] = useState([]);
+  const [guides, setGuides] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  // Lets the navbar (or any link) send someone to "/#some-section" from a
-  // different page — once Home has mounted, smooth-scroll to that section.
+  // Fetch data on mount
+  useEffect(() => {
+    const fetchData = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        // Fetch tours
+        const toursData = await getAllTours();
+        setTours(Array.isArray(toursData) ? toursData : []);
+        
+        // Fetch guides
+        const guidesData = getGuidesWithStatus();
+        setGuides(Array.isArray(guidesData) ? guidesData : []);
+      } catch (err) {
+        console.error("Error fetching data:", err);
+        setError(err.message || "Failed to load data");
+        setTours([]);
+        setGuides([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
+
+  // Lets the navbar send someone to "/#some-section"
   useEffect(() => {
     if (!location.hash) return;
     const id = location.hash.slice(1);
@@ -37,6 +62,28 @@ export default function Home() {
     }, 60);
     return () => clearTimeout(timer);
   }, [location.hash]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <p className="text-muted-foreground">Loading...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center flex-col gap-4 p-4">
+        <p className="text-destructive">Error loading data: {error}</p>
+        <button 
+          onClick={() => window.location.reload()} 
+          className="btn btn-warm"
+        >
+          Retry
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -52,9 +99,13 @@ export default function Home() {
         actionTo="/guides"
       >
         <Rail>
-          {guides.map((g) => (
-            <GuideCard key={g.slug} {...g} />
-          ))}
+          {guides.length > 0 ? (
+            guides.map((g) => (
+              <GuideCard key={g.slug} {...g} />
+            ))
+          ) : (
+            <p className="text-muted-foreground">No guides available</p>
+          )}
         </Rail>
         <div className="mx-auto mt-10 flex max-w-7xl justify-center px-5 sm:px-8">
           <Link to="/guides" className="inline-flex">
@@ -75,9 +126,13 @@ export default function Home() {
         soft
       >
         <Rail>
-          {tours.map((t) => (
-            <TourCard key={t.slug} {...t} />
-          ))}
+          {tours.length > 0 ? (
+            tours.map((t) => (
+              <TourCard key={t.slug} {...t} />
+            ))
+          ) : (
+            <p className="text-muted-foreground">No tours available</p>
+          )}
         </Rail>
       </Section>
 

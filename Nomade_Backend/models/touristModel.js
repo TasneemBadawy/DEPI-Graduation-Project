@@ -13,14 +13,7 @@ export const findTouristByEmail = (Email) => {
 
 export const createTourist = (FName, LName, Email, Password, Profile_Image) => {
   return new Promise((resolve, reject) => {
-<<<<<<< HEAD
-    const sql = `INSERT INTO User (FName, LName, Email, Password , Profile_Image) VALUES (?, ?, ?, ? ,?)`;
-    db.query(sql, [FName, LName, Email, Password , Profile_Image], (err, result) => {
-      if (err) reject(err);
-      else resolve(result);
-    });
-=======
-    const sql = `INSERT INTO User (FName, LName, Email, Password , Profile_Image) VALUES (?, ?, ?, ?,?)`;
+    const sql = `INSERT INTO User (FName, LName, Email, Password, Profile_Image) VALUES (?, ?, ?, ?, ?)`;
     db.query(
       sql,
       [FName, LName, Email, Password, Profile_Image],
@@ -29,13 +22,12 @@ export const createTourist = (FName, LName, Email, Password, Profile_Image) => {
         else resolve(result);
       },
     );
->>>>>>> 0ae9d2ba25712ba0e430d3ee5617272d731970cd
   });
 };
 
 export const getTouristById = (id) => {
   return new Promise((resolve, reject) => {
-    const sql = `SELECT *FROM User WHERE User_ID = ?`;
+    const sql = `SELECT * FROM User WHERE User_ID = ?`;
     db.query(sql, [id], (err, result) => {
       if (err) reject(err);
       if (result.length === 0) return resolve(null);

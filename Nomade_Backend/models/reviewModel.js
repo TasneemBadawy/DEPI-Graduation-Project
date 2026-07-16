@@ -1,17 +1,17 @@
 import db from "../config/database.js";
 import mysql from "mysql2";
 
-export const createReview = (User_ID, Place, Title, Rate, username, Content)=>{
+export const createReview = (User_ID, Guide_ID, Title, Rate, username, Content)=>{
    
     return new Promise ((resolve , reject) =>{
          
         const sql = `
-              Insert Into Reviews 
-              (User_ID, Place, Title, Rate, username, Content)
+              INSERT INTO Reviews
+(User_ID, Guide_ID, Title, Rate, username, Content)
               values (?,?,?,?,?,?)
               `;
 
-        db.query(sql ,[User_ID, Place, Title, Rate, username, Content]  , (err , result) =>{
+        db.query(sql ,[User_ID, Guide_ID, Title, Rate, username, Content]  , (err , result) =>{
             if(err){
                  return reject(err);
             }
@@ -20,17 +20,17 @@ export const createReview = (User_ID, Place, Title, Rate, username, Content)=>{
     });
 };
 
-export const getReviewsByPlace = (Place)=>{
+export const getReviewsByPlace = (Guide_ID)=>{
 
      return new Promise((resolve , reject) =>{
 
          const sql = `
-         Select *
-         From Reviews
-         Where Place = ?
+         SELECT *
+         FROM Reviews
+         WHERE Guide_ID = ?
          `;
 
-         db.query(sql , [Place] , (err , result) =>{
+         db.query(sql , [Guide_ID] , (err , result) =>{
 
             if(err){
                 return reject(err);

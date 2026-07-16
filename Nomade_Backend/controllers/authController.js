@@ -20,6 +20,7 @@ const validateSocialMediaUrl = (url) => {
     /^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w\.-]*)*\/?$/;
   return urlRegex.test(url);
 };
+
 /***************************Register Tourist**************************/
 export const registerTourist = async (req, res) => {
   const { FName, LName, Email, Password } = req.body;
@@ -92,7 +93,7 @@ export const logInTourist = async (req, res) => {
       });
     }
 
-    const token = generateToken(Email);
+    const token = generateToken(tourist.User_ID, "tourist");
     delete tourist.Password;
 
     res.status(200).json({
@@ -229,7 +230,7 @@ export const loginGuide = async (req, res) => {
       });
     }
 
-    const token = generateToken(Email);
+    const token = generateToken(guide.Guide_ID, "guide");
     delete guide.Password;
 
     res.status(200).json({

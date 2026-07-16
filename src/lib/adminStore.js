@@ -2,15 +2,6 @@ import { GUIDES } from "../data/guides";
 
 const STORAGE_KEY = "nomade_admin_guide_verification";
 
-/**
- * No backend yet, so admin verify/unverify actions live as a small
- * { [guideSlug]: true|false } override map in localStorage, layered on top
- * of each guide's seed `verified` flag. Every place that shows a guide's
- * verified badge (GuideCard, GuideProfile, the admin table itself) should
- * resolve through isGuideVerified()/getGuidesWithStatus() here instead of
- * reading guide.verified directly, so an admin action is reflected
- * everywhere immediately.
- */
 function readOverrides() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
@@ -37,7 +28,6 @@ export function setGuideVerified(slug, verified) {
   writeOverrides(overrides);
 }
 
-/** All seed guides with their verified flag resolved through any admin override. */
 export function getGuidesWithStatus() {
   return GUIDES.map((g) => ({ ...g, verified: isGuideVerified(g.slug) }));
 }
