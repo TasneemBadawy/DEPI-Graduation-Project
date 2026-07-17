@@ -1,18 +1,51 @@
 import { Link } from "react-router-dom";
 import { Star, BadgeCheck } from "lucide-react";
+import { getProfileImageUrl, getInitialsAvatar } from "../../lib/uploadStore";
+import { useState } from "react";
 
-export default function GuideCard({ slug, name, photo, city, languages, rating, reviews, specialty, verified, className = "" }) {
+export default function GuideCard({ 
+  slug, 
+  name, 
+  photo, 
+  city, 
+  languages, 
+  rating, 
+  reviews, 
+  specialty, 
+  verified, 
+  className = "" 
+}) {
+  const [imgError, setImgError] = useState(false);
+  
+  // Get the image source - handle both full URLs and relative paths
+  let imageSrc = "/default-avatar.jpg";
+  
+  if (photo && !imgError) {
+    // If photo is already a full URL, use it directly
+    if (photo.startsWith('http')) {
+      imageSrc = photo;
+    } else {
+      // Otherwise, try to get the full URL
+      const fullUrl = getProfileImageUrl(photo);
+      imageSrc = fullUrl || "/default-avatar.jpg";
+    }
+  } else if (name) {
+    // Fallback to initials avatar
+    imageSrc = getInitialsAvatar(name);
+  }
+
   return (
     <Link
       to={`/guides/${slug}`}
       className={`group/card block w-[260px] shrink-0 snap-start overflow-hidden rounded-2xl border border-border bg-card shadow-card transition-all duration-300 hover:-translate-y-1 hover:shadow-elegant sm:w-[280px] ${className}`}
     >
-      <div className="relative aspect-[4/5] overflow-hidden">
+      <div className="relative aspect-[4/5] overflow-hidden bg-muted">
         <img
-          src={photo}
+          src={imageSrc}
           alt={`${name}, ${specialty} guide`}
           loading="lazy"
           className="h-full w-full object-cover transition-transform duration-500 group-hover/card:scale-105"
+          onError={() => setImgError(true)}
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
         <div className="absolute right-3 top-3 inline-flex items-center gap-1 rounded-full bg-white/95 px-2 py-1 text-[11px] font-semibold text-foreground shadow-sm">
@@ -29,7 +62,7 @@ export default function GuideCard({ slug, name, photo, city, languages, rating, 
       </div>
       <div className="p-3.5">
         <p className="text-sm font-medium text-foreground line-clamp-1">{specialty}</p>
-        <p className="mt-1 text-xs text-muted-foreground line-clamp-1">{languages.join(" · ")}</p>
+        <p className="mt-1 text-xs text-muted-foreground line-clamp-1">{languages?.join(" · ") || ""}</p>
       </div>
     </Link>
   );

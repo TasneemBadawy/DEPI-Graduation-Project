@@ -1,17 +1,35 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Search, X } from "lucide-react";
 import GuideCard from "../../components/cards/GuideCard";
 import Footer from "../../components/Footer";
-import { getGuidesWithStatus } from "../../lib/adminStore";
+import { fetchGuidesWithStatus } from "../../lib/adminStore";
 
 export default function Guides() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [query, setQuery] = useState(searchParams.get("q") || "");
-  const allGuides = useMemo(() => getGuidesWithStatus(), []);
+  const [allGuides, setAllGuides] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   const lang = searchParams.get("lang") || "";
   const minRating = searchParams.get("minRating") || "";
+
+  // Fetch guides from API
+  useEffect(() => {
+    const loadGuides = async () => {
+      setLoading(true);
+      try {
+        const guides = await fetchGuidesWithStatus();
+        setAllGuides(guides);
+      } catch (error) {
+        console.error("Error loading guides:", error);
+        setAllGuides([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadGuides();
+  }, []);
 
   const clearFilter = (key) => {
     const next = new URLSearchParams(searchParams);
@@ -27,7 +45,7 @@ export default function Guides() {
     return allGuides.filter((g) => {
       const matchesQuery =
         !q ||
-        [g.name, g.city, g.country, g.specialty, ...(g.languages || [])].join(" ").toLowerCase().includes(q);
+        [g.name, g.city, g.specialty, ...(g.languages || [])].join(" ").toLowerCase().includes(q);
       const matchesLang = !langQ || (g.languages || []).some((l) => l.toLowerCase().includes(langQ));
       const rating = typeof g.rating === "number" ? g.rating : 0;
       const matchesRating = !minR || rating >= minR;
@@ -36,6 +54,17 @@ export default function Guides() {
   }, [query, lang, minRating, allGuides]);
 
   const hasActiveFilters = Boolean(lang || minRating);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
+          <p className="text-muted-foreground">Loading guides...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -75,7 +104,19 @@ export default function Guides() {
         ) : (
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {filtered.map((g) => (
-              <GuideCard key={g.slug} {...g} className="w-full" />
+              <GuideCard 
+                key={g.Guide_ID || g.slug} 
+                slug={g.Guide_ID || g.slug}
+                name={g.name || "Guide"}
+                photo={g.photo || g.Profile_Image}
+                city={g.city || g.Country || "Unknown"}
+                languages={g.languages || []}
+                rating={g.rating || 4.5}
+                reviews={g.reviews || 0}
+                specialty={g.specialty || g.specializations?.[0] || "Tour Guide"}
+                verified={g.verified || false}
+                className="w-full"
+              />
             ))}
           </div>
         )}

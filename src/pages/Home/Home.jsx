@@ -13,9 +13,9 @@ import GuideCard from "../../components/cards/GuideCard";
 import TourCard from "../../components/cards/TourCard";
 import ThingCard from "../../components/cards/ThingCard";
 
-import { getGuidesWithStatus } from "../../lib/adminStore";
 import { getAllTours } from "../../lib/tourStore";
-import { EXPERIENCES } from "../../data/experiences";
+import { getAllExperiences } from "../../lib/experienceStore";
+import { fetchGuidesWithStatus } from "../../lib/adminStore";
 import { TESTIMONIALS } from "../../data/testimonials";
 
 import heroPyramids from "../../assets/hero-pyramids.jpg";
@@ -24,36 +24,42 @@ export default function Home() {
   const location = useLocation();
   const [tours, setTours] = useState([]);
   const [guides, setGuides] = useState([]);
+  const [experiences, setExperiences] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Fetch data on mount
+  // Fetch all data from API
   useEffect(() => {
-    const fetchData = async () => {
+    const fetchAllData = async () => {
       setLoading(true);
       setError(null);
       try {
-        // Fetch tours
+        // Fetch tours from API
         const toursData = await getAllTours();
         setTours(Array.isArray(toursData) ? toursData : []);
         
-        // Fetch guides
-        const guidesData = getGuidesWithStatus();
+        // Fetch guides from API
+        const guidesData = await fetchGuidesWithStatus();
         setGuides(Array.isArray(guidesData) ? guidesData : []);
+        
+        // Fetch experiences from API
+        const experiencesData = await getAllExperiences();
+        setExperiences(Array.isArray(experiencesData) ? experiencesData : []);
       } catch (err) {
         console.error("Error fetching data:", err);
         setError(err.message || "Failed to load data");
         setTours([]);
         setGuides([]);
+        setExperiences([]);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchData();
+    fetchAllData();
   }, []);
 
-  // Lets the navbar send someone to "/#some-section"
+  // Smooth scroll for hash links
   useEffect(() => {
     if (!location.hash) return;
     const id = location.hash.slice(1);
@@ -66,7 +72,10 @@ export default function Home() {
   if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <p className="text-muted-foreground">Loading...</p>
+        <div className="flex flex-col items-center gap-4">
+          <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
+          <p className="text-muted-foreground">Loading...</p>
+        </div>
       </div>
     );
   }
@@ -100,8 +109,19 @@ export default function Home() {
       >
         <Rail>
           {guides.length > 0 ? (
-            guides.map((g) => (
-              <GuideCard key={g.slug} {...g} />
+            guides.slice(0, 6).map((g) => (
+              <GuideCard 
+                key={g.Guide_ID || g.slug} 
+                slug={g.Guide_ID || g.slug}
+                name={g.name || `${g.FName || ''} ${g.LName || ''}`.trim() || "Guide"}
+                photo={g.photo || g.Profile_Image}
+                city={g.city || g.Country || "Unknown"}
+                languages={g.languages || []}
+                rating={g.rating || 4.5}
+                reviews={g.reviews || 0}
+                specialty={g.specialty || g.specializations?.[0] || "Tour Guide"}
+                verified={g.verified || false}
+              />
             ))
           ) : (
             <p className="text-muted-foreground">No guides available</p>
@@ -127,7 +147,7 @@ export default function Home() {
       >
         <Rail>
           {tours.length > 0 ? (
-            tours.map((t) => (
+            tours.slice(0, 6).map((t) => (
               <TourCard key={t.slug} {...t} />
             ))
           ) : (
@@ -145,9 +165,21 @@ export default function Home() {
         actionTo="/experiences"
       >
         <Rail>
-          {EXPERIENCES.map((t) => (
-            <ThingCard key={t.slug} {...t} />
-          ))}
+          {experiences.length > 0 ? (
+            experiences.slice(0, 6).map((exp) => (
+              <ThingCard 
+                key={exp.Activity_ID || exp.slug} 
+                slug={exp.Activity_ID || exp.slug}
+                title={exp.Activity_name || exp.title}
+                image={exp.Image || exp.image || "/default-experience.jpg"}
+                tag={exp.Category || exp.tag || "Experience"}
+                price={exp.Price || exp.price || 0}
+                city={exp.City || exp.city || "Unknown"}
+              />
+            ))
+          ) : (
+            <p className="text-muted-foreground">No experiences available</p>
+          )}
         </Rail>
       </Section>
 

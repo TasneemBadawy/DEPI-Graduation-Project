@@ -1,4 +1,5 @@
-import { useState } from "react";
+// TourDetail.jsx
+import { useState, useEffect } from "react";
 import { useParams, Link, Navigate } from "react-router-dom";
 import { Star, MapPin, Clock, Users, Heart } from "lucide-react";
 import Button from "../../components/ui/Button";
@@ -9,10 +10,41 @@ import { isTourSaved, toggleSavedTour } from "../../lib/savedTours";
 
 export default function TourDetail() {
   const { slug } = useParams();
-  const tour = getAllTours().find((t) => t.slug === slug);
-  const [saved, setSaved] = useState(tour ? isTourSaved(tour.slug) : false);
+  const [tour, setTour] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [saved, setSaved] = useState(false);
 
-  if (!tour) return <Navigate to="/tours" replace />;
+  useEffect(() => {
+    const loadTour = async () => {
+      setLoading(true);
+      try {
+        const tours = await getAllTours();
+        const found = tours.find((t) => t.slug === slug);
+        setTour(found || null);
+        if (found) {
+          setSaved(isTourSaved(found.slug));
+        }
+      } catch (error) {
+        console.error("Error loading tour:", error);
+        setTour(null);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadTour();
+  }, [slug]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <p>Loading tour...</p>
+      </div>
+    );
+  }
+
+  if (!tour) {
+    return <Navigate to="/tours" replace />;
+  }
 
   const guide = getGuideBySlug(tour.guideSlug);
 
@@ -22,6 +54,8 @@ export default function TourDetail() {
   };
 
   return (
+    // ... rest of your component
+  
     <div className="min-h-screen bg-background">
       <div className="h-64 w-full overflow-hidden sm:h-96">
         <img src={tour.image} alt={tour.title} className="h-full w-full object-cover" />

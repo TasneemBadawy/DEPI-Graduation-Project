@@ -1,9 +1,5 @@
 import apiClient from "./apiClient";
-
-/**
- * Talks to the real backend (routes/tourRoutes.js).
- * Every page that lists tours should use these functions.
- */
+import { getCurrentUser } from "./auth";
 
 export function slugify(text) {
   return (text || "")
@@ -13,9 +9,6 @@ export function slugify(text) {
     .replace(/(^-|-$)/g, "");
 }
 
-// The backend has no `slug` field on tours (only Tour_ID). We derive a
-// stable, readable slug from the name + id so existing routes like
-// /tours/:slug keep working without a backend change.
 function slugForTour(tourName, tourId) {
   return `${slugify(tourName)}-${tourId}`;
 }
@@ -25,9 +18,6 @@ function tourIdFromSlug(slug) {
   return match ? match[1] : null;
 }
 
-/**
- * Maps a raw backend tour row to the shape TourCard / TourDetail expect.
- */
 function normalizeTour(raw) {
   return {
     slug: slugForTour(raw.Tour_name, raw.Tour_ID),
@@ -50,8 +40,9 @@ function normalizeTour(raw) {
 
 export async function getAllTours() {
   try {
+    console.log("Fetching tours from API...");
     const response = await apiClient.get("/api/Tours");
-    console.log("API Response:", response.data);
+    console.log("Tours API Response:", response.data);
     
     // Handle different response formats
     let data = response.data;
@@ -73,7 +64,8 @@ export async function getAllTours() {
     
     return data.map(normalizeTour);
   } catch (error) {
-    console.error("Error fetching tours:", error);
+    console.error("Error fetching tours:", error.message);
+    // Return empty array on error so the UI doesn't break
     return [];
   }
 }
@@ -97,20 +89,19 @@ export async function getToursByGuide(guideId) {
 }
 
 export async function getMyTours() {
-  // Import getCurrentUser here to avoid circular dependency
-  const { getCurrentUser } = await import("./auth");
-  const user = getCurrentUser();
-  if (!user) return [];
-  const guideId = user.id || user.Guide_ID;
-  if (!guideId) return [];
-  return getToursByGuide(guideId);
+  try {
+    const user = getCurrentUser();
+    if (!user) return [];
+    const guideId = user.id || user.Guide_ID;
+    if (!guideId) return [];
+    return getToursByGuide(guideId);
+  } catch (error) {
+    console.error("Error fetching my tours:", error);
+    return [];
+  }
 }
 
-/**
- * POST /api/add-tour — multipart/form-data, JWT required
- */
 export async function addTour(data) {
-  const { getCurrentUser } = await import("./auth");
   const user = getCurrentUser();
   if (!user) throw new Error("You must be logged in to add a tour");
 
@@ -136,9 +127,6 @@ export async function addTour(data) {
   return response.data;
 }
 
-/**
- * PUT /api/update_Tour/:Tour_ID
- */
 export async function updateTour(slug, data) {
   const id = tourIdFromSlug(slug);
   if (!id) throw new Error("Couldn't resolve a tour id from this slug.");
@@ -156,9 +144,6 @@ export async function updateTour(slug, data) {
   return response.data;
 }
 
-/**
- * DELETE /api/delete_Tour/:Tour_ID
- */
 export async function deleteTour(slug) {
   const id = tourIdFromSlug(slug);
   if (!id) throw new Error("Couldn't resolve a tour id from this slug.");

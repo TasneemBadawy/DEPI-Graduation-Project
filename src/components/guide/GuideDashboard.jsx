@@ -1,27 +1,32 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-DollarSign,
-Check,
-Bell,
-Star,
-X,
-CalendarIcon,
-Users,
-Clock,
-MapPin,
-ChevronRight,
-ArrowUpRight,
-Settings,
-Pencil,
+  DollarSign,
+  Check,
+  Bell,
+  Star,
+  X,
+  CalendarIcon,
+  Users,
+  Clock,
+  MapPin,
+  ChevronRight,
+  ArrowUpRight,
+  Settings,
+  Pencil,
+  Loader2,
 } from "lucide-react";
 
 import Navbar from "../ui/Navbar";
 import StatCard from "../ui/StatCard";
 import MiniCalendar from "../ui/MiniCalendar";
+import Avatar from "../ui/Avatar";
 import { setCurrentUser } from "../../lib/auth";
+import { updateGuide, getGuideById } from "../../lib/guideStore";
+import { uploadProfileImage, getProfileImageUrl, validateImageFile } from "../../lib/uploadStore";
+
 /* ── Seed data (mirrors design) ── */
 const SEED_REQUESTS = [
   { id: "r1", tourist: { name: "Sofia Martinez", country: "Spain" }, tour: "Pyramids of Giza & Sphinx — Private Half Day", date: "May 12, 2026 · 08:30", travelers: 2, total: 240, message: "Hi! We'd love a slower pace with extra time at the Sphinx for photos.", receivedAgo: "2h ago", status: "pending" },
@@ -58,10 +63,50 @@ const DEFAULT_PROFILE = {
 export default function GuideDashboard({ user }) {
   const navigate = useNavigate();
   const [requests, setRequests] = useState(SEED_REQUESTS);
-  const [name, setName] = useState(user.name);
-  const [profile, setProfile] = useState({ ...DEFAULT_PROFILE, ...user.profile });
+  const [name, setName] = useState(user?.name || "");
+  const [profile, setProfile] = useState({ ...DEFAULT_PROFILE, ...user?.profile });
+  const [profileImage, setProfileImage] = useState(user?.profileImage || null);
   const [editOpen, setEditOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
+  const [isLoading, setIsLoading] = useState(true);
+  const fileInputRef = useRef(null);
+  
   const pendingCount = requests.filter((r) => r.status === "pending").length;
+
+  // Load guide data from backend
+  useEffect(() => {
+    const loadGuideData = async () => {
+      if (!user?.id && !user?.Guide_ID) {
+        setIsLoading(false);
+        return;
+      }
+      
+      try {
+        const guideId = user.id || user.Guide_ID;
+        const guideData = await getGuideById(guideId);
+        if (guideData) {
+          setName(guideData.FName + " " + guideData.LName || user.name);
+          setProfile({
+            about: guideData.About || "",
+            cities: guideData.cities || [],
+            languages: guideData.languages || [],
+            specializations: guideData.specializations || [],
+          });
+          if (guideData.Profile_Image) {
+            setProfileImage(getProfileImageUrl(guideData.Profile_Image));
+          }
+        }
+      } catch (err) {
+        console.error("Error loading guide data:", err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    loadGuideData();
+  }, [user]);
 
   const stats = useMemo(() => [
     { label: "Earnings (30d)", value: "$4,820", delta: "+18%", Icon: DollarSign, accent: "primary" },
@@ -75,14 +120,99 @@ export default function GuideDashboard({ user }) {
 
   const max = Math.max(...EARNINGS_WEEKS.map((x) => x.value));
 
-  const handleSaveProfile = (updated) => {
-    setName(updated.name);
-    setProfile(updated.profile);
-    // Persist to the session so it survives a refresh and is reflected
-    // anywhere else that reads the current user (e.g. lib/auth.js consumers).
-    setCurrentUser({ ...user, name: updated.name, profile: { ...user.profile, ...updated.profile } });
-    setEditOpen(false);
+  const handleImageUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const validation = validateImageFile(file);
+    if (!validation.valid) {
+      setError(validation.error);
+      return;
+    }
+
+    setUploading(true);
+    setError("");
+    
+    try {
+      const guideId = user.id || user.Guide_ID;
+      if (!guideId) throw new Error("Guide ID not found");
+
+      const result = await uploadProfileImage(file, guideId, "guide");
+      
+      // Update local state
+      const imageUrl = getProfileImageUrl(result.Profile_Image);
+      setProfileImage(imageUrl);
+      
+      // Update localStorage user
+      const currentUser = JSON.parse(localStorage.getItem("nomade_current_user") || "{}");
+      const updatedUser = {
+        ...currentUser,
+        profileImage: result.Profile_Image,
+      };
+      setCurrentUser(updatedUser);
+      
+      setSuccess("Profile photo updated successfully!");
+      setTimeout(() => setSuccess(""), 3000);
+    } catch (err) {
+      console.error("Error uploading image:", err);
+      setError(err.message || "Failed to upload image");
+      setTimeout(() => setError(""), 3000);
+    } finally {
+      setUploading(false);
+    }
   };
+
+  const handleSaveProfile = async (updated) => {
+    setLoading(true);
+    setError("");
+    setSuccess("");
+
+    try {
+      const guideId = user.id || user.Guide_ID;
+      if (!guideId) throw new Error("Guide ID not found");
+
+      const updateData = {
+        FName: updated.name.split(" ")[0] || "",
+        LName: updated.name.split(" ").slice(1).join(" ") || "",
+        About: updated.profile.about || "",
+        languages: updated.profile.languages || [],
+        specializations: updated.profile.specializations || [],
+      };
+
+      await updateGuide(guideId, updateData);
+
+      setName(updated.name);
+      setProfile(updated.profile);
+
+      const currentUser = JSON.parse(localStorage.getItem("nomade_current_user") || "{}");
+      const updatedUser = {
+        ...currentUser,
+        name: updated.name,
+        profile: { ...currentUser.profile, ...updated.profile },
+      };
+      setCurrentUser(updatedUser);
+
+      setSuccess("Profile updated successfully!");
+      setEditOpen(false);
+
+      setTimeout(() => {
+        window.location.reload();
+      }, 1500);
+    } catch (err) {
+      console.error("Error saving profile:", err);
+      setError(err.message || "Failed to save profile. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div style={{ minHeight: "100vh", background: "var(--background)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <p>Loading your profile...</p>
+      </div>
+    );
+  }
 
   return (
     <div style={{ minHeight: "100vh", background: "var(--background)" }}>
@@ -97,7 +227,7 @@ export default function GuideDashboard({ user }) {
               Guide Workspace
             </p>
             <h1 style={{ marginTop: 4, fontSize: 32, fontWeight: 600, letterSpacing: "-0.5px", color: "var(--foreground)", margin: "4px 0 6px" }}>
-              Welcome back, {name.split(" ")[0]}
+              Welcome back, {name.split(" ")[0] || "Guide"}
             </h1>
             <p style={{ fontSize: 14, color: "var(--muted-foreground)", margin: 0 }}>
               You have <strong style={{ color: "var(--foreground)" }}>{pendingCount} pending requests</strong> and{" "}
@@ -109,6 +239,17 @@ export default function GuideDashboard({ user }) {
             <button className="btn btn-warm btn-sm" onClick={() => navigate("/dashboard/guide/tours")}><Settings size={14} /> Tour settings</button>
           </div>
         </section>
+
+        {error && (
+          <div style={{ background: "var(--destructive)", color: "white", padding: 12, borderRadius: 10, marginBottom: 16 }}>
+            {error}
+          </div>
+        )}
+        {success && (
+          <div style={{ background: "var(--success)", color: "white", padding: 12, borderRadius: 10, marginBottom: 16 }}>
+            {success}
+          </div>
+        )}
 
         {/* Stats */}
         <section style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16, marginBottom: 24 }}>
@@ -271,9 +412,54 @@ export default function GuideDashboard({ user }) {
                 </button>
               </div>
 
-              <p style={{ marginTop: 12, fontSize: 13, fontWeight: 600, margin: "12px 0 0" }}>{name}</p>
+              {/* Profile Photo Section */}
+              <div style={{ marginTop: 12, display: "flex", alignItems: "center", gap: 16 }}>
+                <div style={{ position: "relative" }}>
+                  <Avatar 
+                    src={profileImage || user?.profileImage} 
+                    name={name}
+                    size="2xl"
+                  />
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    style={{ display: "none" }}
+                    onChange={handleImageUpload}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={uploading}
+                    style={{
+                      position: "absolute",
+                      bottom: 0,
+                      right: 0,
+                      background: "var(--primary)",
+                      color: "white",
+                      border: "2px solid var(--card)",
+                      borderRadius: "50%",
+                      width: 28,
+                      height: 28,
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      fontSize: 12,
+                    }}
+                  >
+                    {uploading ? "..." : "📷"}
+                  </button>
+                </div>
+                <div>
+                  <p style={{ fontSize: 13, fontWeight: 600, margin: 0 }}>{name}</p>
+                  <p style={{ fontSize: 11, color: "var(--muted-foreground)", margin: "2px 0 0" }}>
+                    {uploading ? "Uploading..." : "Click camera to change photo"}
+                  </p>
+                </div>
+              </div>
 
-              <p style={{ marginTop: 6, fontSize: 12, color: "var(--muted-foreground)", lineHeight: 1.5, margin: "6px 0 0" }}>
+              <p style={{ marginTop: 12, fontSize: 12, color: "var(--muted-foreground)", lineHeight: 1.5, margin: "12px 0 0" }}>
                 {profile.about || "No bio yet — click Edit profile to add one."}
               </p>
 
@@ -291,6 +477,7 @@ export default function GuideDashboard({ user }) {
           initialProfile={profile}
           onCancel={() => setEditOpen(false)}
           onSave={handleSaveProfile}
+          loading={loading}
         />
       )}
     </div>
@@ -313,7 +500,7 @@ function ProfileTagRow({ label, values }) {
   );
 }
 
-function EditProfileModal({ initialName, initialProfile, onCancel, onSave }) {
+function EditProfileModal({ initialName, initialProfile, onCancel, onSave, loading }) {
   const [name, setName] = useState(initialName);
   const [about, setAbout] = useState(initialProfile.about || "");
   const [cities, setCities] = useState((initialProfile.cities || []).join(", "));
@@ -352,34 +539,64 @@ function EditProfileModal({ initialName, initialProfile, onCancel, onSave }) {
       >
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <h2 style={{ fontSize: 18, fontWeight: 600, margin: 0 }}>Edit profile</h2>
-          <button type="button" onClick={onCancel} className="btn-icon" aria-label="Close">
+          <button type="button" onClick={onCancel} className="btn-icon" aria-label="Close" disabled={loading}>
             <X size={18} />
           </button>
         </div>
 
         <ModalField label="Name">
-          <input value={name} onChange={(e) => setName(e.target.value)} style={inputStyle} />
+          <input 
+            value={name} 
+            onChange={(e) => setName(e.target.value)} 
+            style={inputStyle} 
+            disabled={loading}
+          />
         </ModalField>
 
         <ModalField label="About">
-          <textarea value={about} onChange={(e) => setAbout(e.target.value)} rows={4} style={{ ...inputStyle, resize: "vertical", fontFamily: "inherit" }} />
+          <textarea 
+            value={about} 
+            onChange={(e) => setAbout(e.target.value)} 
+            rows={4} 
+            style={{ ...inputStyle, resize: "vertical", fontFamily: "inherit" }} 
+            disabled={loading}
+          />
         </ModalField>
 
         <ModalField label="Cities" hint="Comma-separated, e.g. Cairo, Luxor, Aswan">
-          <input value={cities} onChange={(e) => setCities(e.target.value)} style={inputStyle} />
+          <input 
+            value={cities} 
+            onChange={(e) => setCities(e.target.value)} 
+            style={inputStyle} 
+            disabled={loading}
+          />
         </ModalField>
 
         <ModalField label="Languages" hint="Comma-separated, e.g. English, Arabic, French">
-          <input value={languages} onChange={(e) => setLanguages(e.target.value)} style={inputStyle} />
+          <input 
+            value={languages} 
+            onChange={(e) => setLanguages(e.target.value)} 
+            style={inputStyle} 
+            disabled={loading}
+          />
         </ModalField>
 
         <ModalField label="Specializations" hint="Comma-separated, e.g. Ancient Egypt, Diving">
-          <input value={specializations} onChange={(e) => setSpecializations(e.target.value)} style={inputStyle} />
+          <input 
+            value={specializations} 
+            onChange={(e) => setSpecializations(e.target.value)} 
+            style={inputStyle} 
+            disabled={loading}
+          />
         </ModalField>
 
         <div style={{ marginTop: 24, display: "flex", justifyContent: "flex-end", gap: 8 }}>
-          <button type="button" onClick={onCancel} className="btn btn-outline btn-sm">Cancel</button>
-          <button type="submit" className="btn btn-warm btn-sm">Save changes</button>
+          <button type="button" onClick={onCancel} className="btn btn-outline btn-sm" disabled={loading}>
+            Cancel
+          </button>
+          <button type="submit" className="btn btn-warm btn-sm" disabled={loading}>
+            {loading ? <><Loader2 className="h-4 w-4 animate-spin" /> Saving...</> : "Save changes"}
+          </button>
         </div>
       </form>
     </div>

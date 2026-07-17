@@ -74,7 +74,11 @@ function normalizeUser(raw, role) {
     lastName,
     name: `${firstName} ${lastName}`.trim() || raw?.Email || "Nomade user",
     email: raw?.Email ?? raw?.email ?? "",
-    profileImage: raw?.Profile_Image ?? null,
+    profileImage: raw?.Profile_Image 
+      ? raw.Profile_Image.startsWith('http') 
+        ? raw.Profile_Image 
+        : `${API_BASE_URL}/${raw.Profile_Image}`
+      : null,
     country: raw?.Country ?? undefined,
     about: raw?.About ?? undefined,
     phoneNumbers: raw?.phoneNumbers ?? undefined,
@@ -89,9 +93,8 @@ function normalizeUser(raw, role) {
 
 /* ─────────────────────────── low-level request helper ─────────────────────────── */
 
-async function apiRequest(path, { method = "GET", body, auth = false } = {}) {
+async function apiRequest(path, { method = "GET", body, auth = false, isFormData = false } = {}) {
   const headers = {};
-  const isFormData = typeof FormData !== "undefined" && body instanceof FormData;
   if (!isFormData && body !== undefined) headers["Content-Type"] = "application/json";
   if (auth) {
     const token = getToken();
@@ -149,10 +152,31 @@ export async function login(role, { email, password }) {
 /** Registers a tourist or guide and immediately logs in. */
 export async function register(role, payload, credentials) {
   const rolePath = ROLE_PATH[role] ?? "tourist";
+  
+  // Check if payload is FormData (for guide registration with file upload)
+  const isFormData = payload instanceof FormData;
+  
   await apiRequest(`/api/auth/${rolePath}/register`, {
     method: "POST",
     body: payload,
+    isFormData,
   });
 
   return login(role, credentials);
+}
+
+/* ─────────────────────────── profile image helper ─────────────────────────── */
+
+export function getProfileImageUrl(imagePath) {
+  if (!imagePath) return null;
+  if (imagePath.startsWith('http')) return imagePath;
+  if (imagePath.startsWith('uploads/')) {
+    return `${API_BASE_URL}/${imagePath}`;
+  }
+  return `${API_BASE_URL}/uploads/${imagePath}`;
+}
+
+export function getDefaultAvatar(name) {
+  if (!name) return "/default-avatar.jpg";
+  return `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=0f766e&color=fff&size=128`;
 }

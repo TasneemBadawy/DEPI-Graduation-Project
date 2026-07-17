@@ -1,7 +1,11 @@
 import express from "express";
-import { addReview , getReviewsWithUserId ,RemoveReview , getReviewsWithPlace } from "../controllers/reviewsController.js";
-
-import logInAuthMiddleware from '../middlewares/authMiddleware.js'
+import { 
+  addReview, 
+  getReviewsWithUserId, 
+  RemoveReview, 
+  getReviewsWithPlace 
+} from "../controllers/reviewsController.js";
+import logInAuthMiddleware from '../middlewares/authMiddleware.js';
 
 const router = express.Router();
 
@@ -12,7 +16,7 @@ const router = express.Router();
  *     tags:
  *       - Reviews
  *     summary: Add a new review
- *     description: Allows an authenticated user to add a review for a place.
+ *     description: Allows an authenticated user to add a review for a guide.
  *     security:
  *       - bearerAuth: []
  *     requestBody:
@@ -23,16 +27,16 @@ const router = express.Router();
  *             type: object
  *             required:
  *               - User_ID
- *               - Place
+ *               - Guide_ID
  *               - Rate
  *               - Content
  *             properties:
  *               User_ID:
  *                 type: integer
  *                 example: 1
- *               Place:
- *                 type: string
- *                 example: Cairo Tower
+ *               Guide_ID:
+ *                 type: integer
+ *                 example: 5
  *               Title:
  *                 type: string
  *                 example: Amazing Experience
@@ -46,7 +50,7 @@ const router = express.Router();
  *                 example: Tasneem
  *               Content:
  *                 type: string
- *                 example: The place was beautiful and well organized.
+ *                 example: The guide was very professional and friendly.
  *     responses:
  *       201:
  *         description: Review added successfully.
@@ -57,11 +61,11 @@ const router = express.Router();
  *       500:
  *         description: Internal server error.
  */
+router.post("/", logInAuthMiddleware, addReview);
 
-router.post("/reviews", logInAuthMiddleware, addReview);
 /**
  * @swagger
- * /reviews/guide/{guideId}:
+ * /reviews/place/{guideId}:
  *   get:
  *     tags:
  *       - Reviews
@@ -111,8 +115,8 @@ router.post("/reviews", logInAuthMiddleware, addReview);
  *       500:
  *         description: Internal server error.
  */
+router.get("/place/:guideId", getReviewsWithPlace);
 
-router.get("/reviews/place/:guideId", getReviewsWithPlace);
 /**
  * @swagger
  * /reviews/user/{id}:
@@ -137,8 +141,8 @@ router.get("/reviews/place/:guideId", getReviewsWithPlace);
  *       500:
  *         description: Internal server error.
  */
+router.get("/user/:id", getReviewsWithUserId);
 
-router.get("/reviews/user/:id", getReviewsWithUserId);
 /**
  * @swagger
  * /reviews/{id}:
@@ -169,6 +173,6 @@ router.get("/reviews/user/:id", getReviewsWithUserId);
  *       500:
  *         description: Internal server error.
  */
+router.delete("/:id", logInAuthMiddleware, RemoveReview);
 
-router.delete("/reviews/:id", logInAuthMiddleware, RemoveReview);
 export default router;

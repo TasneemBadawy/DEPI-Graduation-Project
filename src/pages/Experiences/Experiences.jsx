@@ -1,17 +1,45 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { Search } from "lucide-react";
 import ThingCard from "../../components/cards/ThingCard";
 import Footer from "../../components/Footer";
-import { EXPERIENCES } from "../../data/experiences";
+import { getAllExperiences } from "../../lib/experienceStore";
 
 export default function Experiences() {
   const [query, setQuery] = useState("");
+  const [experiences, setExperiences] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const loadExperiences = async () => {
+      setLoading(true);
+      try {
+        const data = await getAllExperiences();
+        setExperiences(data);
+      } catch (error) {
+        console.error("Error loading experiences:", error);
+        setExperiences([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadExperiences();
+  }, []);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return EXPERIENCES;
-    return EXPERIENCES.filter((e) => [e.title, e.city, e.tag].join(" ").toLowerCase().includes(q));
-  }, [query]);
+    if (!q) return experiences;
+    return experiences.filter((e) => 
+      [e.Activity_name, e.Category, e.City].join(" ").toLowerCase().includes(q)
+    );
+  }, [query, experiences]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <p className="text-muted-foreground">Loading experiences...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -40,7 +68,16 @@ export default function Experiences() {
         ) : (
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {filtered.map((e) => (
-              <ThingCard key={e.slug} {...e} className="w-full" />
+              <ThingCard 
+                key={e.Activity_ID} 
+                slug={e.Activity_ID}
+                title={e.Activity_name}
+                image={e.Image || "/default-experience.jpg"}
+                tag={e.Category || "Experience"}
+                price={e.Price || 0}
+                city={e.City || "Unknown"}
+                className="w-full" 
+              />
             ))}
           </div>
         )}
