@@ -7,6 +7,14 @@ import {
   searchAndFilterTours,
 } from "../models/tourModel.js";
 
+// Helper function to get full image URL
+const getFullImageUrl = (imagePath) => {
+  if (!imagePath) return null;
+  if (imagePath.startsWith('http')) return imagePath;
+  const baseUrl = process.env.BASE_URL || 'http://localhost:5000';
+  return `${baseUrl}/${imagePath}`;
+};
+
 // Add Tour
 export const addTour = async (req, res) => {
   const {
@@ -21,7 +29,6 @@ export const addTour = async (req, res) => {
     Guide_ID,
   } = req.body;
 
-  // Validate required fields
   if (!Tour_name || !Price_per_person || !City) {
     return res.status(400).json({
       error: "Tour name, price, and city are required",
@@ -57,19 +64,28 @@ export const addTour = async (req, res) => {
   }
 };
 
-// Get all tours
+// Get all tours - ✅ FIXED IMAGE URL
 export const getTours = async (req, res) => {
   try {
     const tours = await getAllTours();
-    res.status(200).json(tours);
+    
+    // Add full image URLs
+    const toursWithImages = tours.map(tour => ({
+      ...tour,
+      Image_URL: tour.Image_URL ? getFullImageUrl(tour.Image_URL) : null,
+      images: tour.images ? tour.images.map(img => getFullImageUrl(img)) : []
+    }));
+    
+    res.status(200).json(toursWithImages);
   } catch (err) {
+    console.error("Error fetching tours:", err);
     res.status(500).json({
       error: err.message,
     });
   }
 };
 
-// Get single tour
+// Get single tour - ✅ FIXED IMAGE URL
 export const getOneTour = async (req, res) => {
   const { Tour_ID } = req.params;
 
@@ -78,8 +94,17 @@ export const getOneTour = async (req, res) => {
     if (!tour) {
       return res.status(404).json({ message: "Tour not found" });
     }
-    res.status(200).json(tour);
+    
+    // Add full image URLs
+    const tourWithImages = {
+      ...tour,
+      Image_URL: tour.Image_URL ? getFullImageUrl(tour.Image_URL) : null,
+      images: tour.images ? tour.images.map(img => getFullImageUrl(img)) : []
+    };
+    
+    res.status(200).json(tourWithImages);
   } catch (err) {
+    console.error("Error fetching tour:", err);
     res.status(500).json({
       error: err.message,
     });
@@ -100,7 +125,6 @@ export const updateTour = async (req, res) => {
     Nights,
   } = req.body;
 
-  // Validate required fields
   if (!Tour_name || !Price_per_person || !City) {
     return res.status(400).json({
       error: "Tour name, price, and city are required",
@@ -163,7 +187,15 @@ export const searchTours = async (req, res) => {
 
   try {
     const tours = await searchAndFilterTours(country, city, price);
-    res.status(200).json(tours);
+    
+    // Add full image URLs
+    const toursWithImages = tours.map(tour => ({
+      ...tour,
+      Image_URL: tour.Image_URL ? getFullImageUrl(tour.Image_URL) : null,
+      images: tour.images ? tour.images.map(img => getFullImageUrl(img)) : []
+    }));
+    
+    res.status(200).json(toursWithImages);
   } catch (err) {
     res.status(500).json({
       error: err.message,

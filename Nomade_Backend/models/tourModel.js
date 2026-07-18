@@ -1,5 +1,4 @@
 import db from "../config/database.js";
-import mysql from "mysql2";
 
 export const createTour = (
   Tour_name,
@@ -36,7 +35,6 @@ export const createTour = (
 
         if (images && images.length > 0) {
           const imageSql = `INSERT INTO Tour_Images (Tour_ID, Image_URL) VALUES ?`;
-
           const imageValues = images.map((url) => [tourId, url]);
 
           db.query(imageSql, [imageValues], (imageErr) => {
@@ -76,11 +74,16 @@ export const getAllTours = () => {
             Days: row.Days,
             Nights: row.Nights,
             Guide_ID: row.Guide_ID,
+            Image_URL: null,
             images: [],
           };
         }
         if (row.Image_URL) {
           toursMap[row.Tour_ID].images.push(row.Image_URL);
+          // Set first image as main
+          if (!toursMap[row.Tour_ID].Image_URL) {
+            toursMap[row.Tour_ID].Image_URL = row.Image_URL;
+          }
         }
       });
 
@@ -113,12 +116,16 @@ export const getSingleTour = (Tour_ID) => {
         Days: results[0].Days,
         Nights: results[0].Nights,
         Guide_ID: results[0].Guide_ID,
+        Image_URL: null,
         images: [],
       };
 
       results.forEach((row) => {
         if (row.Image_URL) {
           tour.images.push(row.Image_URL);
+          if (!tour.Image_URL) {
+            tour.Image_URL = row.Image_URL;
+          }
         }
       });
 
@@ -218,11 +225,15 @@ export const searchAndFilterTours = (country, city, Price) => {
             Days: row.Days,
             Nights: row.Nights,
             Guide_ID: row.Guide_ID,
+            Image_URL: null,
             images: [],
           };
         }
         if (row.Image_URL) {
           toursMap[row.Tour_ID].images.push(row.Image_URL);
+          if (!toursMap[row.Tour_ID].Image_URL) {
+            toursMap[row.Tour_ID].Image_URL = row.Image_URL;
+          }
         }
       });
 

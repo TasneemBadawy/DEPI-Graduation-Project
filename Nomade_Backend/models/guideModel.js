@@ -41,27 +41,13 @@ export const createGuide = async (
         Email,
         Country,
         About,
+        FaceBook,
+        Linkedin,
+        Instagram,
         Profile_Image
       });
 
-      // Check if Tourguide table exists and has correct columns
-      const checkTableSql = `SHOW COLUMNS FROM Tourguide`;
-      db.query(checkTableSql, (checkErr, columns) => {
-        if (checkErr) {
-          console.error("Error checking Tourguide table:", checkErr);
-          return reject(new Error("Tourguide table doesn't exist or cannot be accessed"));
-        }
-        
-        const columnNames = columns.map(c => c.Field);
-        console.log("Tourguide columns:", columnNames);
-        
-        // Check if Profile_Image column exists
-        if (!columnNames.includes('Profile_Image')) {
-          console.warn("Profile_Image column not found in Tourguide table");
-        }
-      });
-
-      // Insert guide - use correct column names
+      // Insert guide
       const guideSql = `
         INSERT INTO Tourguide 
         (FName, LName, Email, Password, Country, About, FaceBook, Linkedin, Instagram${Profile_Image ? ', Profile_Image' : ''})
@@ -84,20 +70,16 @@ export const createGuide = async (
         params.push(Profile_Image);
       }
 
-      console.log("SQL:", guideSql);
-      console.log("Params:", params);
-
       db.query(guideSql, params, async (err, result) => {
         if (err) {
           console.error("Error inserting guide:", err);
-          console.error("SQL Error:", err.sqlMessage);
           return reject(err);
         }
 
         const guideId = result.insertId;
         console.log(`Guide created with ID: ${guideId}`);
 
-        // Insert related data (with error handling for each)
+        // Insert related data
         try {
           // Insert phone numbers
           if (phoneNumbers && phoneNumbers.length > 0) {
@@ -107,7 +89,7 @@ export const createGuide = async (
               db.query(phoneSql, [phoneValues], (phoneErr) => {
                 if (phoneErr) {
                   console.warn("Phone numbers insertion failed:", phoneErr.message);
-                  resolvePhone(); // Don't fail the whole operation
+                  resolvePhone();
                 } else {
                   console.log(`Inserted ${phoneNumbers.length} phone numbers`);
                   resolvePhone();
@@ -210,7 +192,7 @@ export const getAllGuides = () => {
   });
 };
 
-// Get guide by ID
+// Get guide by ID - ✅ INCLUDES ALL SOCIAL MEDIA
 export const getGuideCompleteProfile = (guideId) => {
   return new Promise((resolve, reject) => {
     const sql = `SELECT * FROM Tourguide WHERE Guide_ID = ?`;
@@ -269,7 +251,7 @@ export const getGuideCompleteProfile = (guideId) => {
   });
 };
 
-// Update guide profile
+// Update guide profile - ✅ INCLUDES SOCIAL MEDIA AND EMAIL
 export const updateGuideProfile = (guideId, updateData) => {
   return new Promise((resolve, reject) => {
     const {
@@ -281,32 +263,27 @@ export const updateGuideProfile = (guideId, updateData) => {
       FaceBook,
       Linkedin,
       Instagram,
+      Profile_Image,
     } = updateData;
 
-    const sql = `
+    let sql = `
       UPDATE Tourguide 
       SET FName = ?, LName = ?, Email = ?, Country = ?, About = ?, FaceBook = ?, Linkedin = ?, Instagram = ?
-      WHERE Guide_ID = ?
     `;
+    const params = [FName, LName, Email, Country, About, FaceBook, Linkedin, Instagram];
+    
+    if (Profile_Image !== undefined) {
+      sql += `, Profile_Image = ?`;
+      params.push(Profile_Image);
+    }
+    
+    sql += ` WHERE Guide_ID = ?`;
+    params.push(guideId);
 
-    db.query(
-      sql,
-      [
-        FName,
-        LName,
-        Email,
-        Country,
-        About,
-        FaceBook,
-        Linkedin,
-        Instagram,
-        guideId,
-      ],
-      (err, result) => {
-        if (err) return reject(err);
-        resolve(result);
-      },
-    );
+    db.query(sql, params, (err, result) => {
+      if (err) return reject(err);
+      resolve(result);
+    });
   });
 };
 

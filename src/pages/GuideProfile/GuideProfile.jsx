@@ -25,7 +25,6 @@ export default function GuideProfile() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [modalOpen, setModalOpen] = useState(false);
-  const [editingReview, setEditingReview] = useState(null);
   const currentUser = getCurrentUser();
 
   // Load guide data from API
@@ -250,6 +249,41 @@ function AboutTab({ guide }) {
         <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
           {guide.about}
         </p>
+        
+        {/* ✅ Contact & Social Media */}
+        <div className="mt-4 pt-4 border-t border-border">
+          <h4 className="text-sm font-semibold text-foreground mb-2">Contact & Social</h4>
+          {guide.Email && (
+            <p className="text-sm text-muted-foreground">
+              📧 <a href={`mailto:${guide.Email}`} className="text-primary hover:underline">{guide.Email}</a>
+            </p>
+          )}
+          {guide.phoneNumbers && guide.phoneNumbers.length > 0 && (
+            <p className="text-sm text-muted-foreground">
+              📞 {guide.phoneNumbers.join(", ")}
+            </p>
+          )}
+          <div className="flex flex-wrap gap-3 mt-2">
+            {guide.FaceBook && (
+              <a href={guide.FaceBook} target="_blank" rel="noopener noreferrer" 
+                 className="text-sm text-primary hover:underline">
+                Facebook
+              </a>
+            )}
+            {guide.Linkedin && (
+              <a href={guide.Linkedin} target="_blank" rel="noopener noreferrer" 
+                 className="text-sm text-primary hover:underline">
+                LinkedIn
+              </a>
+            )}
+            {guide.Instagram && (
+              <a href={guide.Instagram} target="_blank" rel="noopener noreferrer" 
+                 className="text-sm text-primary hover:underline">
+                Instagram
+              </a>
+            )}
+          </div>
+        </div>
       </div>
 
       <div className="grid gap-6 sm:grid-cols-2">

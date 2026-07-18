@@ -1,10 +1,10 @@
 import bcrypt from "bcrypt";
 import { findTouristByEmail, createTourist } from "../models/touristModel.js";
 import { findGuideByEmail, createGuide } from "../models/guideModel.js";
+import { findAdminByEmail, createAdmin } from "../models/adminModel.js";
 import { generateToken } from "../utils/generateToken.js";
 
-/******************************Tourist*******************************************/
-// Validations
+/******************************Validations*******************************************/
 const validateEmail = (email) => {
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   return emailRegex.test(email);
@@ -20,31 +20,27 @@ const validateSocialMediaUrl = (url) => {
   return urlRegex.test(url);
 };
 
+/******************************Tourist*******************************************/
+
 /***************************Register Tourist**************************/
 export const registerTourist = async (req, res) => {
   const { FName, LName, Email, Password } = req.body;
-
   const Profile_Image = req.file ? req.file.path : null;
 
-  // Validation
   if (!FName || FName.trim() === "" || !LName || LName.trim() === "") {
-    return res
-      .status(400)
-      .json({ error: "First name and Last name are required." });
+    return res.status(400).json({ error: "First name and Last name are required." });
   }
   if (!Email || !validateEmail(Email)) {
     return res.status(400).json({ error: "A valid email is required." });
   }
   if (!Password || Password.length < 6) {
-    return res
-      .status(400)
-      .json({ error: "Password must be at least 6 characters long." });
+    return res.status(400).json({ error: "Password must be at least 6 characters long." });
   }
 
   try {
     const existedUser = await findTouristByEmail(Email);
     if (existedUser) {
-      return res.status(400).json({ error: "Email is already exist." });
+      return res.status(400).json({ error: "Email already exists." });
     }
 
     const hashPassword = await bcrypt.hash(Password, 10);
@@ -56,10 +52,7 @@ export const registerTourist = async (req, res) => {
     });
   } catch (err) {
     console.error("Tourist registration error:", err);
-    res.status(500).json({ 
-      error: err.message,
-      details: err.sqlMessage || "Unknown database error"
-    });
+    res.status(500).json({ error: err.message });
   }
 };
 
@@ -68,32 +61,21 @@ export const logInTourist = async (req, res) => {
   const { Email, Password } = req.body;
 
   if (!Email || !validateEmail(Email)) {
-    return res.status(400).json({
-      error: "Valid email is required",
-    });
+    return res.status(400).json({ error: "Valid email is required" });
   }
-
   if (!Password) {
-    return res.status(400).json({
-      error: "Password is required",
-    });
+    return res.status(400).json({ error: "Password is required" });
   }
 
   try {
     const tourist = await findTouristByEmail(Email);
-
     if (!tourist) {
-      return res.status(401).json({
-        error: "Invalid email or password",
-      });
+      return res.status(401).json({ error: "Invalid email or password" });
     }
 
     const isPasswordValid = await bcrypt.compare(Password, tourist.Password);
-
     if (!isPasswordValid) {
-      return res.status(401).json({
-        error: "Invalid email or password",
-      });
+      return res.status(401).json({ error: "Invalid email or password" });
     }
 
     const token = generateToken(tourist.User_ID, "tourist");
@@ -106,10 +88,7 @@ export const logInTourist = async (req, res) => {
     });
   } catch (err) {
     console.error("Tourist login error:", err);
-    res.status(500).json({
-      error: "Failed to login",
-      message: err.message,
-    });
+    res.status(500).json({ error: "Failed to login", message: err.message });
   }
 };
 
@@ -117,70 +96,45 @@ export const logInTourist = async (req, res) => {
 
 /***************************Register Guide**********************************/
 export const registerGuide = async (req, res) => {
-  console.log("=== Guide Registration Started ===");
-  console.log("Request body:", req.body);
-  console.log("Request file:", req.file);
-  
+  const {
+    FName,
+    LName,
+    Email,
+    Password,
+    Country,
+    About,
+    FaceBook,
+    Linkedin,
+    Instagram,
+    phoneNumbers = [],
+    specializations = [],
+    certificates = [],
+    languages = [],
+  } = req.body;
+
+  const Profile_Image = req.file ? req.file.path : null;
+
+  const errors = [];
+  if (!FName || FName.trim() === "") errors.push("First name is required");
+  if (!LName || LName.trim() === "") errors.push("Last name is required");
+  if (!Email || !validateEmail(Email)) errors.push("Valid email is required");
+  if (!Password || !validatePassword(Password)) errors.push("Password must be at least 6 characters");
+  if (FaceBook && !validateSocialMediaUrl(FaceBook)) errors.push("Invalid Facebook URL");
+  if (Linkedin && !validateSocialMediaUrl(Linkedin)) errors.push("Invalid LinkedIn URL");
+  if (Instagram && !validateSocialMediaUrl(Instagram)) errors.push("Invalid Instagram URL");
+
+  if (errors.length > 0) {
+    return res.status(400).json({ errors });
+  }
+
   try {
-    const {
-      FName,
-      LName,
-      Email,
-      Password,
-      Country,
-      About,
-      FaceBook,
-      Linkedin,
-      Instagram,
-      phoneNumbers = [],
-      specializations = [],
-      certificates = [],
-      languages = [],
-    } = req.body;
-
-    const Profile_Image = req.file ? req.file.path : null;
-
-    console.log("Parsed data:", { FName, LName, Email, Country, languages, specializations });
-
-    // Validation
-    const errors = [];
-
-    if (!FName || FName.trim() === "") errors.push("First name is required");
-    if (!LName || LName.trim() === "") errors.push("Last name is required");
-    if (!Email || !validateEmail(Email)) errors.push("Valid email is required");
-    if (!Password || !validatePassword(Password))
-      errors.push("Password must be at least 6 characters");
-    if (Country && Country.length > 50) errors.push("Country name too long");
-    if (About && About.length > 65535) errors.push("About section too long");
-    if (FaceBook && !validateSocialMediaUrl(FaceBook))
-      errors.push("Invalid Facebook URL");
-    if (Linkedin && !validateSocialMediaUrl(Linkedin))
-      errors.push("Invalid LinkedIn URL");
-    if (Instagram && !validateSocialMediaUrl(Instagram))
-      errors.push("Invalid Instagram URL");
-
-    if (errors.length > 0) {
-      console.log("Validation errors:", errors);
-      return res.status(400).json({ errors });
-    }
-
-    // Check if guide already exists
-    console.log("Checking if guide exists...");
     const existingGuide = await findGuideByEmail(Email);
     if (existingGuide) {
-      console.log("Guide already exists:", Email);
-      return res.status(409).json({
-        error: "A guide with this email already exists",
-      });
+      return res.status(409).json({ error: "A guide with this email already exists" });
     }
 
-    // Hash password
-    console.log("Hashing password...");
     const hashedPassword = await bcrypt.hash(Password, 10);
-
-    // Create guide with all related data
-    console.log("Creating guide...");
-    const result = await createGuide(
+    await createGuide(
       FName,
       LName,
       Email,
@@ -197,27 +151,13 @@ export const registerGuide = async (req, res) => {
       Profile_Image,
     );
 
-    console.log("Guide created successfully:", result);
-
     res.status(201).json({
       message: "Guide registered successfully",
       Profile_Image,
-      guideId: result.guideId,
     });
   } catch (err) {
-    console.error("=== Guide Registration Error ===");
-    console.error("Error name:", err.name);
-    console.error("Error message:", err.message);
-    console.error("Error stack:", err.stack);
-    console.error("SQL Error:", err.sqlMessage || "None");
-    console.error("SQL Code:", err.code || "None");
-    
-    // Send more detailed error for debugging
-    res.status(500).json({
-      error: "Failed to register guide",
-      message: err.message,
-      details: err.sqlMessage || err.code || "Unknown database error",
-    });
+    console.error("Guide registration error:", err);
+    res.status(500).json({ error: "Failed to register guide", message: err.message });
   }
 };
 
@@ -226,32 +166,21 @@ export const loginGuide = async (req, res) => {
   const { Email, Password } = req.body;
 
   if (!Email || !validateEmail(Email)) {
-    return res.status(400).json({
-      error: "Valid email is required",
-    });
+    return res.status(400).json({ error: "Valid email is required" });
   }
-
   if (!Password) {
-    return res.status(400).json({
-      error: "Password is required",
-    });
+    return res.status(400).json({ error: "Password is required" });
   }
 
   try {
     const guide = await findGuideByEmail(Email);
-
     if (!guide) {
-      return res.status(401).json({
-        error: "Invalid email or password",
-      });
+      return res.status(401).json({ error: "Invalid email or password" });
     }
 
     const isPasswordValid = await bcrypt.compare(Password, guide.Password);
-
     if (!isPasswordValid) {
-      return res.status(401).json({
-        error: "Invalid email or password",
-      });
+      return res.status(401).json({ error: "Invalid email or password" });
     }
 
     const token = generateToken(guide.Guide_ID, "guide");
@@ -264,9 +193,77 @@ export const loginGuide = async (req, res) => {
     });
   } catch (err) {
     console.error("Guide login error:", err);
-    res.status(500).json({
-      error: "Failed to login",
-      message: err.message,
+    res.status(500).json({ error: "Failed to login", message: err.message });
+  }
+};
+
+/******************************Admin********************************************/
+
+/***************************Register Admin**********************************/
+export const registerAdmin = async (req, res) => {
+  const { FName, LName, Email, Password } = req.body;
+  const Profile_Image = req.file ? req.file.path : null;
+
+  if (!FName || FName.trim() === "" || !LName || LName.trim() === "") {
+    return res.status(400).json({ error: "First name and Last name are required." });
+  }
+  if (!Email || !validateEmail(Email)) {
+    return res.status(400).json({ error: "A valid email is required." });
+  }
+  if (!Password || Password.length < 6) {
+    return res.status(400).json({ error: "Password must be at least 6 characters long." });
+  }
+
+  try {
+    const existingAdmin = await findAdminByEmail(Email);
+    if (existingAdmin) {
+      return res.status(400).json({ error: "Admin with this email already exists" });
+    }
+
+    const hashPassword = await bcrypt.hash(Password, 10);
+    await createAdmin(FName, LName, Email, hashPassword, Profile_Image);
+
+    res.status(201).json({
+      message: "Admin registered successfully.",
     });
+  } catch (err) {
+    console.error("Admin registration error:", err);
+    res.status(500).json({ error: err.message });
+  }
+};
+
+/***************************Login Admin**********************************/
+export const loginAdmin = async (req, res) => {
+  const { Email, Password } = req.body;
+
+  if (!Email || !validateEmail(Email)) {
+    return res.status(400).json({ error: "Valid email is required" });
+  }
+  if (!Password) {
+    return res.status(400).json({ error: "Password is required" });
+  }
+
+  try {
+    const admin = await findAdminByEmail(Email);
+    if (!admin) {
+      return res.status(401).json({ error: "Invalid email or password" });
+    }
+
+    const isPasswordValid = await bcrypt.compare(Password, admin.Password);
+    if (!isPasswordValid) {
+      return res.status(401).json({ error: "Invalid email or password" });
+    }
+
+    const token = generateToken(admin.Admin_ID, "admin");
+    delete admin.Password;
+
+    res.status(200).json({
+      message: "Logged in successfully",
+      token,
+      admin,
+    });
+  } catch (err) {
+    console.error("Admin login error:", err);
+    res.status(500).json({ error: "Failed to login", message: err.message });
   }
 };

@@ -19,13 +19,12 @@ app.use(cors());
 app.use(express.json());
 app.use("/uploads", express.static("uploads"));
 
-// ✅ ALL ROUTES MOUNTED CORRECTLY
 app.use("/api/auth", authRoutes);
 app.use("/api", tourRoutes);
 app.use("/api", activityRoutes);
 app.use("/api", guideRoutes);
 app.use("/api", uploadRoutes);
-app.use("/reviews", reviewRoutes);   // ✅ This is correct
+app.use("/reviews", reviewRoutes);
 app.use("/booking", bookingRoutes);
 
 const PORT = process.env.PORT || 5000;

@@ -139,11 +139,9 @@ export default function GuideDashboard({ user }) {
 
       const result = await uploadProfileImage(file, guideId, "guide");
       
-      // Update local state
       const imageUrl = getProfileImageUrl(result.Profile_Image);
       setProfileImage(imageUrl);
       
-      // Update localStorage user
       const currentUser = JSON.parse(localStorage.getItem("nomade_current_user") || "{}");
       const updatedUser = {
         ...currentUser,
@@ -174,7 +172,12 @@ export default function GuideDashboard({ user }) {
       const updateData = {
         FName: updated.name.split(" ")[0] || "",
         LName: updated.name.split(" ").slice(1).join(" ") || "",
+        Email: updated.email || "",
         About: updated.profile.about || "",
+        FaceBook: updated.facebook || "",
+        Linkedin: updated.linkedin || "",
+        Instagram: updated.instagram || "",
+        phoneNumbers: updated.phoneNumbers || [],
         languages: updated.profile.languages || [],
         specializations: updated.profile.specializations || [],
       };
@@ -188,6 +191,7 @@ export default function GuideDashboard({ user }) {
       const updatedUser = {
         ...currentUser,
         name: updated.name,
+        email: updated.email,
         profile: { ...currentUser.profile, ...updated.profile },
       };
       setCurrentUser(updatedUser);
@@ -475,6 +479,11 @@ export default function GuideDashboard({ user }) {
         <EditProfileModal
           initialName={name}
           initialProfile={profile}
+          initialEmail={user?.email || ""}
+          initialPhoneNumbers={user?.phoneNumbers || []}
+          initialFacebook={user?.FaceBook || ""}
+          initialLinkedin={user?.Linkedin || ""}
+          initialInstagram={user?.Instagram || ""}
           onCancel={() => setEditOpen(false)}
           onSave={handleSaveProfile}
           loading={loading}
@@ -500,12 +509,30 @@ function ProfileTagRow({ label, values }) {
   );
 }
 
-function EditProfileModal({ initialName, initialProfile, onCancel, onSave, loading }) {
+function EditProfileModal({ 
+  initialName, 
+  initialProfile, 
+  initialEmail,
+  initialPhoneNumbers,
+  initialFacebook,
+  initialLinkedin,
+  initialInstagram,
+  onCancel, 
+  onSave, 
+  loading 
+}) {
   const [name, setName] = useState(initialName);
   const [about, setAbout] = useState(initialProfile.about || "");
   const [cities, setCities] = useState((initialProfile.cities || []).join(", "));
   const [languages, setLanguages] = useState((initialProfile.languages || []).join(", "));
   const [specializations, setSpecializations] = useState((initialProfile.specializations || []).join(", "));
+  
+  // ✅ NEW FIELDS
+  const [email, setEmail] = useState(initialEmail || "");
+  const [phoneNumbers, setPhoneNumbers] = useState((initialPhoneNumbers || []).join(", "));
+  const [facebook, setFacebook] = useState(initialFacebook || "");
+  const [linkedin, setLinkedin] = useState(initialLinkedin || "");
+  const [instagram, setInstagram] = useState(initialInstagram || "");
 
   const toList = (value) => value.split(",").map((v) => v.trim()).filter(Boolean);
 
@@ -514,12 +541,17 @@ function EditProfileModal({ initialName, initialProfile, onCancel, onSave, loadi
     if (!name.trim()) return;
     onSave({
       name: name.trim(),
+      email: email.trim(),
       profile: {
         about: about.trim(),
         cities: toList(cities),
         languages: toList(languages),
         specializations: toList(specializations),
       },
+      phoneNumbers: toList(phoneNumbers),
+      facebook: facebook.trim(),
+      linkedin: linkedin.trim(),
+      instagram: instagram.trim(),
     });
   };
 
@@ -550,6 +582,57 @@ function EditProfileModal({ initialName, initialProfile, onCancel, onSave, loadi
             onChange={(e) => setName(e.target.value)} 
             style={inputStyle} 
             disabled={loading}
+          />
+        </ModalField>
+
+        <ModalField label="Email">
+          <input 
+            value={email} 
+            onChange={(e) => setEmail(e.target.value)} 
+            style={inputStyle} 
+            disabled={loading}
+            type="email"
+            placeholder="your@email.com"
+          />
+        </ModalField>
+
+        <ModalField label="Phone Numbers" hint="Comma-separated, e.g. +20123456789, +20987654321">
+          <input 
+            value={phoneNumbers} 
+            onChange={(e) => setPhoneNumbers(e.target.value)} 
+            style={inputStyle} 
+            disabled={loading}
+            placeholder="+20123456789, +20987654321"
+          />
+        </ModalField>
+
+        <ModalField label="Facebook URL">
+          <input 
+            value={facebook} 
+            onChange={(e) => setFacebook(e.target.value)} 
+            style={inputStyle} 
+            disabled={loading}
+            placeholder="https://facebook.com/yourprofile"
+          />
+        </ModalField>
+
+        <ModalField label="LinkedIn URL">
+          <input 
+            value={linkedin} 
+            onChange={(e) => setLinkedin(e.target.value)} 
+            style={inputStyle} 
+            disabled={loading}
+            placeholder="https://linkedin.com/in/yourprofile"
+          />
+        </ModalField>
+
+        <ModalField label="Instagram URL">
+          <input 
+            value={instagram} 
+            onChange={(e) => setInstagram(e.target.value)} 
+            style={inputStyle} 
+            disabled={loading}
+            placeholder="https://instagram.com/yourprofile"
           />
         </ModalField>
 
