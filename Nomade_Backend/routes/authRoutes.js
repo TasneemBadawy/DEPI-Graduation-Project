@@ -69,8 +69,7 @@ const router = express.Router();
  *         description: Internal server error.
  */
 
-router.post("/tourist/register",upload.single("Profile_Image"), registerTourist);
-
+router.post("/tourist/register", registerTourist);
 /**
  * @swagger
  * /api/auth/tourist/login:

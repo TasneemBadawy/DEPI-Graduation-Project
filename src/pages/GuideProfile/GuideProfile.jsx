@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { useParams, useLocation, Navigate, Link } from "react-router-dom";
 import {
   Star, MapPin, Languages, BadgeCheck, ShieldCheck, ChevronLeft, ChevronRight, Pencil, Trash2, X,
@@ -6,11 +6,12 @@ import {
 import Button from "../../components/ui/Button";
 import TourCard from "../../components/cards/TourCard";
 import Footer from "../../components/Footer";
-import { getGuideBySlug } from "../../data/guides";
-import { isGuideVerified } from "../../lib/adminStore";
+import Avatar from "../../components/ui/Avatar";
+import { getGuideById } from "../../lib/guideStore";
 import { getToursByGuide } from "../../lib/tourStore";
+import { getReviewsForGuide, addReview, deleteReview } from "../../lib/reviewStore";
 import { getCurrentUser } from "../../lib/auth";
-import { getReviewsForGuide, saveReview, deleteReview } from "../../lib/reviewStore";
+import { getProfileImageUrl } from "../../lib/uploadStore";
 
 const TABS = ["About", "Tours", "Reviews", "Availability"];
 
@@ -18,54 +19,149 @@ export default function GuideProfile() {
   const { slug } = useParams();
   const location = useLocation();
   const [activeTab, setActiveTab] = useState("About");
+  const [guide, setGuide] = useState(null);
+  const [tours, setTours] = useState([]);
+  const [reviews, setReviews] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [editingReview, setEditingReview] = useState(null);
+  const currentUser = getCurrentUser();
 
-  // A guide who just registered doesn't exist in the mock dataset yet — their
-  // freshly-submitted form data is passed via router state instead, keyed by
-  // the reserved "preview" slug. Everyone else is looked up normally.
-  const isPreview = slug === "preview";
-  const rawGuide = isPreview ? location.state?.guide : getGuideBySlug(slug);
-  const guide = rawGuide && !isPreview ? { ...rawGuide, verified: isGuideVerified(rawGuide.slug) } : rawGuide;
+  // Load guide data from API
+  useEffect(() => {
+    const loadGuideData = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        // Get guide by ID
+        const guideData = await getGuideById(slug);
+        if (!guideData) {
+          setError("Guide not found");
+          setLoading(false);
+          return;
+        }
+        setGuide(guideData);
 
-  if (!guide) return <Navigate to="/guides" replace />;
+        // Get guide's tours
+        const toursData = await getToursByGuide(guideData.Guide_ID);
+        setTours(toursData);
 
-  const tours = isPreview ? [] : getToursByGuide(guide.slug);
+        // Get guide's reviews
+        const reviewsData = await getReviewsForGuide(guideData.Guide_ID);
+        setReviews(reviewsData || []);
+      } catch (err) {
+        console.error("Error loading guide:", err);
+        setError(err.message || "Failed to load guide");
+        setReviews([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadGuideData();
+  }, [slug]);
+
+  const refreshReviews = async () => {
+    if (guide) {
+      const reviewsData = await getReviewsForGuide(guide.Guide_ID);
+      setReviews(reviewsData || []);
+    }
+  };
+
+  const handleAddReview = async (reviewData) => {
+    try {
+      await addReview({
+        User_ID: currentUser?.id || currentUser?.User_ID,
+        Guide_ID: guide.Guide_ID,
+        Title: reviewData.title || "Review",
+        Rate: reviewData.rating,
+        username: currentUser?.name || "Anonymous",
+        Content: reviewData.text
+      });
+      await refreshReviews();
+      setModalOpen(false);
+    } catch (error) {
+      console.error("Error adding review:", error);
+      alert(error.message || "Failed to add review");
+    }
+  };
+
+  const handleDeleteReview = async (reviewId) => {
+    if (!window.confirm("Delete your review? This can't be undone.")) return;
+    try {
+      await deleteReview(reviewId);
+      await refreshReviews();
+    } catch (error) {
+      console.error("Error deleting review:", error);
+      alert(error.message || "Failed to delete review");
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
+          <p className="text-muted-foreground">Loading guide...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !guide) {
+    return <Navigate to="/guides" replace />;
+  }
+
+  // Format guide data for display
+  const guideDisplay = {
+    ...guide,
+    name: `${guide.FName || ''} ${guide.LName || ''}`.trim() || "Guide",
+    tagline: guide.specializations?.[0] || "Tour Guide",
+    city: guide.Country || "Unknown",
+    languages: guide.languages || [],
+    rating: guide.rating || 4.5,
+    reviews: guide.reviews || reviews.length || 0,
+    specialty: guide.specializations?.[0] || "Tour Guide",
+    yearsGuiding: guide.yearsGuiding || 0,
+    toursCompleted: guide.toursCompleted || 0,
+    verified: guide.verified || false,
+    about: guide.About || `${guide.FName || 'This'} guide has been guiding travelers through ${guide.Country || 'various destinations'} for ${guide.yearsGuiding || 0} years.`,
+    specializations: guide.specializations || [],
+    photo: guide.Profile_Image || "/default-avatar.jpg",
+    cover: guide.cover || "/default-cover.jpg",
+  };
 
   return (
     <div className="min-h-screen bg-background">
-      {isPreview && (
-        <div className="bg-secondary-soft px-5 py-2.5 text-center text-sm font-medium text-secondary">
-          This is a preview of your public profile — it's pending verification and isn't live yet.
-        </div>
-      )}
       <div className="h-64 w-full overflow-hidden sm:h-80">
-
-        <img src={guide.cover} alt={`${guide.city} skyline`} className="h-full w-full object-cover" />
+        <img src={guideDisplay.cover} alt={`${guideDisplay.city} skyline`} className="h-full w-full object-cover" />
       </div>
 
       <div className="mx-auto -mt-16 max-w-7xl px-5 sm:px-8">
         <div className="rounded-2xl border border-border bg-card p-6 shadow-card">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-4">
-              <img
-                src={guide.photo}
-                alt={guide.name}
-                className="h-20 w-20 shrink-0 rounded-full border-4 border-card object-cover shadow-card sm:h-24 sm:w-24"
+              <Avatar 
+                src={guideDisplay.photo} 
+                name={guideDisplay.name} 
+                size="2xl"
+                className="border-4 border-card shadow-card"
               />
               <div>
                 <div className="flex items-center gap-1.5">
-                  <h1 className="text-xl font-bold text-white sm:text-2xl">{guide.name}</h1>
-                  {guide.verified && <BadgeCheck className="h-5 w-5 fill-secondary text-white" />}
+                  <h1 className="text-xl font-bold text-white sm:text-2xl">{guideDisplay.name}</h1>
+                  {guideDisplay.verified && <BadgeCheck className="h-5 w-5 fill-secondary text-white" />}
                 </div>
-                <p className="text-sm text-muted-foreground">{guide.tagline}</p>
+                <p className="text-sm text-muted-foreground">{guideDisplay.tagline}</p>
                 <div className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
                   <span className="inline-flex items-center gap-1 font-semibold text-foreground">
-                    <Star className="h-3.5 w-3.5 fill-primary text-primary" /> {guide.rating} ({guide.reviews} reviews)
+                    <Star className="h-3.5 w-3.5 fill-primary text-primary" /> {guideDisplay.rating} ({guideDisplay.reviews} reviews)
                   </span>
                   <span className="inline-flex items-center gap-1">
-                    <MapPin className="h-3.5 w-3.5" /> {guide.city}{guide.country ? `, ${guide.country}` : ""}
+                    <MapPin className="h-3.5 w-3.5" /> {guideDisplay.city}
                   </span>
                   <span className="inline-flex items-center gap-1">
-                    <Languages className="h-3.5 w-3.5" /> {guide.languages.length} languages
+                    <Languages className="h-3.5 w-3.5" /> {guideDisplay.languages.length} languages
                   </span>
                 </div>
               </div>
@@ -73,9 +169,9 @@ export default function GuideProfile() {
           </div>
 
           <div className="mt-6 grid grid-cols-3 gap-3 border-t border-border pt-6 sm:grid-cols-3">
-            <Stat label="Tours completed" value={guide.toursCompleted?.toLocaleString?.() ?? guide.toursCompleted} />
-            <Stat label="Years guiding" value={`${guide.yearsGuiding} yrs`} />
-            <Stat label="Languages" value={guide.languages.length} />
+            <Stat label="Tours completed" value={guideDisplay.toursCompleted} />
+            <Stat label="Years guiding" value={`${guideDisplay.yearsGuiding} yrs`} />
+            <Stat label="Languages" value={guideDisplay.languages.length} />
           </div>
         </div>
 
@@ -93,40 +189,51 @@ export default function GuideProfile() {
                 >
                   {tab}
                   {tab === "Tours" && ` (${tours.length})`}
-                  {tab === "Reviews" && ` (${guide.reviews})`}
+                  {tab === "Reviews" && ` (${reviews.length})`}
                 </button>
               ))}
             </div>
 
             <div className="mt-6">
-              {activeTab === "About" && <AboutTab guide={guide} />}
+              {activeTab === "About" && <AboutTab guide={guideDisplay} />}
               {activeTab === "Tours" && <ToursTab tours={tours} />}
-              {activeTab === "Reviews" && <ReviewsTab guide={guide} />}
+              {activeTab === "Reviews" && (
+                <ReviewsTab 
+                  guide={guideDisplay} 
+                  reviews={reviews} 
+                  onAddReview={handleAddReview}
+                  onDeleteReview={handleDeleteReview}
+                  modalOpen={modalOpen}
+                  setModalOpen={setModalOpen}
+                  currentUser={currentUser}
+                />
+              )}
               {activeTab === "Availability" && <AvailabilityTab />}
             </div>
           </div>
 
           <aside className="h-fit space-y-4 lg:sticky lg:top-20">
             <div className="rounded-2xl border border-border bg-card p-5 shadow-card">
-              {/* <div className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
-                <Star className="h-4 w-4 fill-primary text-primary" /> {guide.rating}
-                <span className="font-normal text-muted-foreground">· {guide.reviews} reviews</span>
-              </div> */}
-              <Button variant="hero" size="xl" className="mt-4 w-full">Request booking</Button>
-              {/* <Button variant="outline" size="lg" className="mt-2 w-full">Contact guide</Button> */}
-              <p className="mt-3 text-xs text-muted-foreground">
-                You won't be charged yet.
-              </p>
+            <Button 
+  variant="hero" 
+  size="xl" 
+  className="mt-4 w-full"
+  onClick={() => {
+    if (!currentUser) {
+      navigate("/login", { state: { from: `/booking/${guide.Guide_ID}` } });
+      return;
+    }
+    navigate(`/booking/${guide.Guide_ID}`);
+  }}
+>
+  Request booking
+</Button>              <p className="mt-3 text-xs text-muted-foreground">You won't be charged yet.</p>
               <ul className="mt-4 space-y-2 border-t border-border pt-4 text-xs text-muted-foreground">
                 <li className="flex items-center gap-1.5"><ShieldCheck className="h-3.5 w-3.5 text-secondary" /> Free cancellation up to 48h</li>
                 <li className="flex items-center gap-1.5"><ShieldCheck className="h-3.5 w-3.5 text-secondary" /> Verified by Nomade</li>
                 <li className="flex items-center gap-1.5"><ShieldCheck className="h-3.5 w-3.5 text-secondary" /> Licensed guide</li>
               </ul>
             </div>
-            {/* <div className="rounded-2xl border border-border bg-card p-5">
-              <p className="text-sm font-semibold text-foreground">Report this profile</p>
-              <p className="mt-1 text-xs text-muted-foreground">Something feel off? Let our trust team know.</p>
-            </div> */}
           </aside>
         </div>
       </div>
@@ -153,7 +260,7 @@ function AboutTab({ guide }) {
       <div className="rounded-2xl border border-border bg-card p-6">
         <h3 className="text-base font-semibold text-foreground">About {guide.name.split(" ")[0]}</h3>
         <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-          {guide.about || `${guide.name} has been guiding travelers through ${guide.city} for ${guide.yearsGuiding} years, specializing in ${guide.specialty.toLowerCase()}.`}
+          {guide.about}
         </p>
       </div>
 
@@ -161,7 +268,7 @@ function AboutTab({ guide }) {
         <div className="rounded-2xl border border-border bg-card p-6">
           <h3 className="text-base font-semibold text-foreground">Specializations</h3>
           <div className="mt-3 flex flex-wrap gap-2">
-            {(guide.specializations || [guide.specialty]).map((s) => (
+            {(guide.specializations || []).map((s) => (
               <span key={s} className="rounded-full bg-secondary-soft px-3 py-1 text-xs font-medium text-secondary">{s}</span>
             ))}
           </div>
@@ -169,7 +276,7 @@ function AboutTab({ guide }) {
         <div className="rounded-2xl border border-border bg-card p-6">
           <h3 className="text-base font-semibold text-foreground">Languages</h3>
           <div className="mt-3 flex flex-wrap gap-2">
-            {guide.languages.map((l) => (
+            {(guide.languages || []).map((l) => (
               <span key={l} className="rounded-full bg-muted px-3 py-1 text-xs font-medium text-foreground">{l}</span>
             ))}
           </div>
@@ -207,34 +314,9 @@ function ToursTab({ tours }) {
   );
 }
 
-function ReviewsTab({ guide }) {
-  const breakdown = guide.ratingBreakdown || { 5: 80, 4: 15, 3: 3, 2: 1, 1: 1 };
-  const categories = guide.ratingCategories || { Knowledge: guide.rating, Communication: guide.rating, Punctuality: guide.rating, Value: guide.rating };
-  const seedReviews = guide.reviewsList || [];
-
-  const currentUser = getCurrentUser();
-  const [localReviews, setLocalReviews] = useState(() => getReviewsForGuide(guide.slug));
-  const [modalOpen, setModalOpen] = useState(false);
-
-  const myReview = currentUser ? localReviews.find((r) => r.reviewerEmail === currentUser.email) : null;
-  const otherLocalReviews = localReviews.filter((r) => r.reviewerEmail !== currentUser?.email);
-
-  const refresh = () => setLocalReviews(getReviewsForGuide(guide.slug));
-
-  const handleSave = ({ rating, text }) => {
-    saveReview(guide.slug, currentUser.email, { name: currentUser.name, rating, text });
-    refresh();
-    setModalOpen(false);
-  };
-
-  const handleDelete = () => {
-    if (!window.confirm("Delete your review? This can't be undone.")) return;
-    deleteReview(guide.slug, currentUser.email);
-    refresh();
-  };
-
-  const noReviewsAtAll = seedReviews.length === 0 && otherLocalReviews.length === 0 && !myReview;
-
+function ReviewsTab({ guide, reviews, onAddReview, onDeleteReview, modalOpen, setModalOpen, currentUser }) {
+  const myReview = currentUser ? reviews.find(r => r.User_ID === currentUser.id || r.User_ID === currentUser.User_ID) : null;
+  
   return (
     <div className="space-y-6">
       <div className="rounded-2xl border border-border bg-card p-6">
@@ -248,22 +330,6 @@ function ReviewsTab({ guide }) {
             </div>
             <div className="mt-1 text-xs text-muted-foreground">{guide.reviews} verified reviews</div>
           </div>
-          <div className="space-y-1.5">
-            {[5, 4, 3, 2, 1].map((star) => (
-              <div key={star} className="flex items-center gap-2 text-xs text-muted-foreground">
-                <span className="w-3">{star}</span>
-                <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted">
-                  <div className="h-full bg-primary" style={{ width: `${breakdown[star] || 0}%` }} />
-                </div>
-                <span className="w-8 text-right">{breakdown[star] || 0}%</span>
-              </div>
-            ))}
-          </div>
-        </div>
-        <div className="mt-6 grid grid-cols-2 gap-3 border-t border-border pt-6 sm:grid-cols-4">
-          {Object.entries(categories).map(([label, value]) => (
-            <Stat key={label} label={label} value={value.toFixed ? value.toFixed(2) : value} />
-          ))}
         </div>
       </div>
 
@@ -296,7 +362,7 @@ function ReviewsTab({ guide }) {
             </button>
             <button
               type="button"
-              onClick={handleDelete}
+              onClick={() => onDeleteReview(myReview.Review_ID)}
               className="inline-flex items-center gap-1.5 rounded-lg border border-destructive/30 bg-card px-3.5 py-2 text-xs font-semibold text-destructive hover:bg-destructive/5"
             >
               <Trash2 className="h-3.5 w-3.5" /> Delete
@@ -314,18 +380,16 @@ function ReviewsTab({ guide }) {
       </div>
 
       <div className="space-y-4">
-        {noReviewsAtAll ? (
+        {reviews.length === 0 ? (
           <p className="rounded-2xl border border-border bg-card p-8 text-center text-sm text-muted-foreground">No written reviews yet.</p>
         ) : (
-          <>
-            {myReview && <ReviewCard review={myReview} mine />}
-            {otherLocalReviews.map((r) => (
-              <ReviewCard key={r.reviewerEmail} review={r} />
-            ))}
-            {seedReviews.map((r) => (
-              <ReviewCard key={r.name} review={r} />
-            ))}
-          </>
+          reviews.map((r) => (
+            <ReviewCard 
+              key={r.Review_ID || r.id} 
+              review={r} 
+              isMine={currentUser && (r.User_ID === currentUser.id || r.User_ID === currentUser.User_ID)}
+            />
+          ))
         )}
       </div>
 
@@ -334,51 +398,60 @@ function ReviewsTab({ guide }) {
           initial={myReview}
           guideName={guide.name}
           onCancel={() => setModalOpen(false)}
-          onSave={handleSave}
+          onSave={onAddReview}
         />
       )}
     </div>
   );
 }
 
-function ReviewCard({ review, mine = false }) {
+function ReviewCard({ review, isMine = false }) {
   return (
-    <div className={`rounded-2xl border p-5 ${mine ? "border-primary/30 bg-primary-soft/40" : "border-border bg-card"}`}>
+    <div className={`rounded-2xl border p-5 ${isMine ? "border-primary/30 bg-primary-soft/40" : "border-border bg-card"}`}>
       <div className="flex items-center justify-between">
         <div>
           <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
-            {review.name}
-            {mine && <span className="rounded-full bg-primary px-2 py-0.5 text-[10px] font-bold text-white">You</span>}
+            {review.username || review.name || "Anonymous"}
+            {isMine && <span className="rounded-full bg-primary px-2 py-0.5 text-[10px] font-bold text-white">You</span>}
           </div>
           <div className="text-xs text-muted-foreground">
-            {[review.country, review.date].filter(Boolean).join(" · ")}
+            {review.date || new Date().toLocaleDateString()}
           </div>
         </div>
         <div className="flex items-center gap-0.5">
-          {Array.from({ length: review.rating }).map((_, i) => (
+          {Array.from({ length: review.Rate || review.rating || 5 }).map((_, i) => (
             <Star key={i} className="h-3.5 w-3.5 fill-primary text-primary" />
           ))}
         </div>
       </div>
-      {review.tour && <p className="mt-1 text-xs font-medium text-secondary">{review.tour}</p>}
-      <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{review.text}</p>
+      {review.Title && <p className="mt-1 text-xs font-medium text-secondary">{review.Title}</p>}
+      <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{review.Content || review.text}</p>
     </div>
   );
 }
 
 function ReviewModal({ initial, guideName, onCancel, onSave }) {
-  const [rating, setRating] = useState(initial?.rating || 0);
+  const [rating, setRating] = useState(initial?.Rate || initial?.rating || 0);
   const [hoverRating, setHoverRating] = useState(0);
-  const [text, setText] = useState(initial?.text || "");
+  const [title, setTitle] = useState(initial?.Title || "");
+  const [text, setText] = useState(initial?.Content || initial?.text || "");
   const [error, setError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!rating) {
       setError("Pick a star rating before saving.");
       return;
     }
-    onSave({ rating, text: text.trim() });
+    setSubmitting(true);
+    try {
+      await onSave({ rating, title, text: text.trim() });
+    } catch (err) {
+      setError(err.message || "Failed to save review");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -424,6 +497,19 @@ function ReviewModal({ initial, guideName, onCancel, onSave }) {
         </div>
 
         <div className="mt-5">
+          <label htmlFor="review-title" className="mb-2 block text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Title (optional)
+          </label>
+          <input
+            id="review-title"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="Brief summary of your experience"
+            className="w-full rounded-lg border border-border bg-background p-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/25 focus:border-primary"
+          />
+        </div>
+
+        <div className="mt-5">
           <label htmlFor="review-text" className="mb-2 block text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             Your review (optional)
           </label>
@@ -440,11 +526,11 @@ function ReviewModal({ initial, guideName, onCancel, onSave }) {
         {error && <p className="mt-3 text-xs font-medium text-destructive">{error}</p>}
 
         <div className="mt-6 flex justify-end gap-2">
-          <button type="button" onClick={onCancel} className="rounded-lg border border-border bg-card px-4 py-2 text-sm font-semibold text-foreground hover:bg-muted">
+          <button type="button" onClick={onCancel} className="rounded-lg border border-border bg-card px-4 py-2 text-sm font-semibold text-foreground hover:bg-muted" disabled={submitting}>
             Cancel
           </button>
-          <button type="submit" className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white hover:brightness-110">
-            {initial ? "Save changes" : "Post review"}
+          <button type="submit" className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white hover:brightness-110" disabled={submitting}>
+            {submitting ? "Saving..." : initial ? "Save changes" : "Post review"}
           </button>
         </div>
       </form>

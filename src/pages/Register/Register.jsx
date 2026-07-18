@@ -9,7 +9,6 @@ import { InstagramIcon, FacebookIcon, LinkedinIcon } from "../../components/icon
 import AuthLayout from "../../components/auth/AuthLayout";
 import RoleSelector from "../../components/auth/RoleSelector";
 import AuthTabs from "../../components/auth/AuthTabs";
-import { SocialRow } from "../../components/AuthComponents";
 import { cn } from "../../lib/utils";
 import { useAuth } from "../../context/AuthContext";
 
@@ -317,8 +316,6 @@ function TouristRegisterForm() {
         )}
       </button>
 
-      <SocialRow redirectTo="/register" />
-
       <p className="mt-6 text-center text-sm text-muted-foreground">
         Already have an account?{" "}
         <button type="button" onClick={() => navigate("/login")} className="font-semibold text-primary hover:underline">
@@ -343,12 +340,39 @@ function GuideRegisterForm() {
     bio: "", languages: [], specializations: [], files: [], password: "",
     instagram: "", facebook: "", linkedin: "", website: "",
   });
+  
+  // ✅ Profile image states (moved outside handleSubmit)
+  const [profileImageFile, setProfileImageFile] = useState(null);
+  const [profileImagePreview, setProfileImagePreview] = useState("");
+  
   const set = (k, v) => setData((d) => ({ ...d, [k]: v }));
 
   const { register } = useAuth();
   const navigate = useNavigate();
 
   const confirmPasswordError = confirmTouched && confirmPassword !== data.password ? "Passwords don't match" : "";
+
+  // ✅ Handle image change (moved outside handleSubmit)
+  const handleImageChange = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    // Validate
+    if (!file.type.startsWith('image/')) {
+      setFormError("Please select an image file");
+      return;
+    }
+    
+    if (file.size > 5 * 1024 * 1024) {
+      setFormError("Image must be less than 5MB");
+      return;
+    }
+    
+    setProfileImageFile(file);
+    const reader = new FileReader();
+    reader.onload = () => setProfileImagePreview(reader.result);
+    reader.readAsDataURL(file);
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -372,9 +396,7 @@ function GuideRegisterForm() {
       return;
     }
 
-    // The backend's guide-register route expects multipart/form-data (it
-    // can accept a Profile_Image upload), so we build a FormData payload
-    // instead of plain JSON.
+    // The backend's guide-register route expects multipart/form-data
     const formData = new FormData();
     formData.append("FName", data.firstName.trim());
     formData.append("LName", data.lastName.trim());
@@ -386,11 +408,14 @@ function GuideRegisterForm() {
     if (data.linkedin) formData.append("Linkedin", data.linkedin);
     if (data.instagram) formData.append("Instagram", data.instagram);
     if (data.phone) formData.append("phoneNumbers", data.phone);
+    
+    // ✅ Append profile image if selected
+    if (profileImageFile) {
+      formData.append("Profile_Image", profileImageFile);
+    }
+    
     data.specializations.forEach((s) => formData.append("specializations", s));
     data.languages.forEach((l) => formData.append("languages", l));
-    // Certificate uploads aren't stored as files by the backend yet (the
-    // Guide_Certificates table only holds text), so we send the file names
-    // as a best-effort placeholder until that's supported server-side.
     data.files.forEach((f) => formData.append("certificates", f.name));
 
     setSubmitting(true);
@@ -411,12 +436,55 @@ function GuideRegisterForm() {
           <AlertCircle className="h-4 w-4 shrink-0" /> {formError}
         </p>
       )}
+      
       <Section title="Personal information" subtitle="Tell travelers who you are.">
         <div className="grid gap-4 sm:grid-cols-2">
           <Field id="firstName" label="First name" icon={User} placeholder="Karim" value={data.firstName} onChange={(v) => set("firstName", v)} />
           <Field id="lastName" label="Last name" icon={User} placeholder="El-Sayed" value={data.lastName} onChange={(v) => set("lastName", v)} />
         </div>
       </Section>
+
+      {/* ✅ Profile Image Upload */}
+      <div className="text-left w-full mb-4">
+        <label className="mb-2 block text-sm font-medium text-foreground">Profile Photo</label>
+        <div className="flex items-center gap-4">
+          <div className="h-20 w-20 rounded-full overflow-hidden border-2 border-border bg-muted flex items-center justify-center">
+            {profileImagePreview ? (
+              <img src={profileImagePreview} alt="Profile preview" className="h-full w-full object-cover" />
+            ) : (
+              <div className="h-full w-full bg-muted flex items-center justify-center text-muted-foreground">
+                <svg className="h-8 w-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                </svg>
+              </div>
+            )}
+          </div>
+          <div>
+            <label className="cursor-pointer rounded-lg border border-border bg-card px-4 py-2 text-sm font-medium text-foreground hover:bg-muted inline-block">
+              Choose Photo
+              <input
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handleImageChange}
+              />
+            </label>
+            {profileImagePreview && (
+              <button
+                type="button"
+                onClick={() => {
+                  setProfileImageFile(null);
+                  setProfileImagePreview("");
+                }}
+                className="ml-2 text-sm text-destructive hover:underline"
+              >
+                Remove
+              </button>
+            )}
+            <p className="mt-1 text-xs text-muted-foreground">JPG, PNG, GIF (max 5MB)</p>
+          </div>
+        </div>
+      </div>
 
       <Section title="Contact" subtitle="How travelers and our team can reach you.">
         <div className="grid gap-4 sm:grid-cols-2">

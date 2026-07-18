@@ -1,9 +1,9 @@
 "use client";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import {
   Search, Users, ShieldCheck, UserX, UserCheck, Compass as CompassIcon,
-  Sparkles, MessageSquare, Star, MapPin,
+  Sparkles, MessageSquare, Star, MapPin, Trash2,
 } from "lucide-react";
 import { getGuideBySlug } from "../../data/guides";
 import { getGuidesWithStatus, setGuideVerified } from "../../lib/adminStore";
@@ -11,7 +11,7 @@ import { TOURISTS, getInitials } from "../../data/tourists";
 import { getAllTours } from "../../lib/tourStore";
 import { EXPERIENCES } from "../../data/experiences";
 import { SEED_REVIEWS } from "../../data/reviews";
-import { getAllReviews } from "../../lib/reviewStore";
+import { getAllReviews, deleteReview as deleteReviewApi } from "../../lib/reviewStore";
 
 const TABS = [
   { id: "guides", label: "Guides", Icon: Users },
@@ -30,37 +30,42 @@ export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState("guides");
   const [query, setQuery] = useState("");
   const [guides, setGuides] = useState(() => getGuidesWithStatus());
+  const [reviews, setReviews] = useState([]);
+  const [loadingReviews, setLoadingReviews] = useState(true);
+  const [deleteDialog, setDeleteDialog] = useState(null); // { reviewId, reviewText, reviewerName }
 
   const tours = useMemo(() => getAllTours(), []);
 
-  const reviews = useMemo(() => {
-    const local = getAllReviews().map((r) => {
-      const guide = getGuideBySlug(r.guideSlug);
-      return {
-        id: `local-${r.guideSlug}-${r.reviewerEmail}`,
-        reviewerName: r.name,
-        guideName: guide?.name || r.guideSlug,
-        tour: null,
-        city: guide?.city,
-        rating: r.rating,
-        text: r.text,
-        date: r.date,
-      };
-    });
-    const seed = SEED_REVIEWS.map((r) => {
-      const guide = getGuideBySlug(r.guideSlug);
-      return {
-        id: r.id,
-        reviewerName: r.reviewerName,
-        guideName: guide?.name || r.guideSlug,
-        tour: r.tour,
-        city: r.city,
-        rating: r.rating,
-        text: r.text,
-        date: r.date,
-      };
-    });
-    return [...local, ...seed];
+  // Load reviews from the API
+  useEffect(() => {
+    const loadReviews = async () => {
+      setLoadingReviews(true);
+      try {
+        const apiReviews = await getAllReviews();
+        const formatted = apiReviews.map((r) => {
+          const guide = getGuideBySlug(r.guideSlug);
+          return {
+            id: r.Review_ID || r.id,
+            reviewerName: r.username || r.name || "Anonymous",
+            guideName: guide?.name || r.guideName || "Unknown Guide",
+            tour: r.tour || "—",
+            city: guide?.city || r.city || "—",
+            rating: r.Rate || r.rating || 5,
+            text: r.Content || r.text || "",
+            date: r.createdAt || r.date || new Date().toISOString().split('T')[0],
+            guideSlug: r.guideSlug,
+            userId: r.User_ID,
+          };
+        });
+        setReviews(formatted);
+      } catch (error) {
+        console.error("Error loading reviews:", error);
+        setReviews([]);
+      } finally {
+        setLoadingReviews(false);
+      }
+    };
+    loadReviews();
   }, []);
 
   const avgRating = reviews.length
@@ -75,6 +80,18 @@ export default function AdminDashboard() {
     setGuides(getGuidesWithStatus());
   };
 
+  const handleDeleteReview = async (reviewId) => {
+    try {
+      await deleteReviewApi(reviewId);
+      // Remove the review from the local state
+      setReviews(prev => prev.filter(r => r.id !== reviewId));
+      setDeleteDialog(null);
+    } catch (error) {
+      console.error("Error deleting review:", error);
+      alert(error.message || "Failed to delete review. Please try again.");
+    }
+  };
+
   const q = query.trim().toLowerCase();
   const matches = (parts) => !q || parts.filter(Boolean).join(" ").toLowerCase().includes(q);
 
@@ -82,7 +99,7 @@ export default function AdminDashboard() {
   const filteredTourists = useMemo(() => TOURISTS.filter((t) => matches([t.name, t.country])), [q]);
   const filteredTours = useMemo(() => tours.filter((t) => matches([t.title, t.city])), [tours, q]);
   const filteredActivities = useMemo(() => EXPERIENCES.filter((a) => matches([a.title, a.city])), [q]);
-  const filteredReviews = useMemo(() => reviews.filter((r) => matches([r.reviewerName, r.guideName])), [reviews, q]);
+  const filteredReviews = useMemo(() => reviews.filter((r) => matches([r.reviewerName, r.guideName, r.text])), [reviews, q]);
 
   return (
     <div className="min-h-screen bg-primary-soft">
@@ -138,9 +155,28 @@ export default function AdminDashboard() {
           {activeTab === "tourists" && <TouristsTable tourists={filteredTourists} />}
           {activeTab === "tours" && <ToursTable tours={filteredTours} />}
           {activeTab === "activities" && <ActivitiesTable activities={filteredActivities} />}
-          {activeTab === "reviews" && <ReviewsTable reviews={filteredReviews} avgRating={avgRating} />}
+          {activeTab === "reviews" && (
+            <ReviewsTable 
+              reviews={filteredReviews} 
+              avgRating={avgRating} 
+              loading={loadingReviews}
+              onDeleteReview={(reviewId, reviewText, reviewerName) => 
+                setDeleteDialog({ reviewId, reviewText, reviewerName })
+              }
+            />
+          )}
         </div>
       </div>
+
+      {/* Delete Confirmation Dialog */}
+      {deleteDialog && (
+        <DeleteConfirmationDialog
+          reviewText={deleteDialog.reviewText}
+          reviewerName={deleteDialog.reviewerName}
+          onConfirm={() => handleDeleteReview(deleteDialog.reviewId)}
+          onCancel={() => setDeleteDialog(null)}
+        />
+      )}
     </div>
   );
 }
@@ -469,7 +505,19 @@ function ActivitiesTable({ activities }) {
 
 /* ───────────────────────────── REVIEWS ───────────────────────────── */
 
-function ReviewsTable({ reviews, avgRating }) {
+function ReviewsTable({ reviews, avgRating, loading, onDeleteReview }) {
+  if (loading) {
+    return (
+      <div>
+        <SectionHeader title="Reviews" subtitle="Loading reviews..." />
+        <div className="px-6 py-10 text-center text-sm text-muted-foreground">
+          <div className="inline-block h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent"></div>
+          <p className="mt-2">Loading reviews...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div>
       <SectionHeader
@@ -482,7 +530,7 @@ function ReviewsTable({ reviews, avgRating }) {
         }
       />
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[820px] border-collapse">
+        <table className="w-full min-w-[900px] border-collapse">
           <thead>
             <tr className="border-b border-border">
               <Th>Tourist</Th>
@@ -492,11 +540,12 @@ function ReviewsTable({ reviews, avgRating }) {
               <Th>Rating</Th>
               <Th>Comment</Th>
               <Th>Date</Th>
+              <Th className="text-right">Actions</Th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
             {reviews.length === 0 ? (
-              <EmptyRow colSpan={7}>No reviews match your search.</EmptyRow>
+              <EmptyRow colSpan={8}>No reviews match your search.</EmptyRow>
             ) : (
               reviews.map((r) => (
                 <tr key={r.id}>
@@ -509,11 +558,72 @@ function ReviewsTable({ reviews, avgRating }) {
                     <span className="italic text-muted-foreground">"{r.text}"</span>
                   </Td>
                   <Td className="whitespace-nowrap text-muted-foreground">{r.date}</Td>
+                  <Td className="text-right">
+                    <button
+                      type="button"
+                      onClick={() => onDeleteReview(r.id, r.text, r.reviewerName)}
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-destructive/30 px-3 py-1.5 text-xs font-semibold text-destructive transition-colors hover:bg-destructive/5"
+                      aria-label={`Delete review by ${r.reviewerName}`}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" /> Delete
+                    </button>
+                  </Td>
                 </tr>
               ))
             )}
           </tbody>
         </table>
+      </div>
+    </div>
+  );
+}
+
+/* ───────────────────────────── DELETE CONFIRMATION DIALOG ───────────────────────────── */
+
+function DeleteConfirmationDialog({ reviewText, reviewerName, onConfirm, onCancel }) {
+  return (
+    <div
+      className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm"
+      onClick={onCancel}
+    >
+      <div
+        className="w-full max-w-md rounded-2xl border border-border bg-card p-6 shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-start gap-4">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-destructive/10 text-destructive">
+            <Trash2 className="h-5 w-5" />
+          </div>
+          <div className="flex-1">
+            <h3 className="text-lg font-semibold text-foreground">Delete Review</h3>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Are you sure you want to delete this review by <strong>{reviewerName}</strong>?
+            </p>
+            {reviewText && (
+              <div className="mt-3 rounded-lg bg-muted p-3">
+                <p className="text-sm italic text-muted-foreground">"{reviewText}"</p>
+              </div>
+            )}
+            <p className="mt-3 text-xs text-destructive">This action cannot be undone.</p>
+          </div>
+        </div>
+
+        <div className="mt-6 flex justify-end gap-3">
+          <button
+            type="button"
+            onClick={onCancel}
+            className="rounded-lg border border-border bg-card px-4 py-2 text-sm font-semibold text-foreground hover:bg-muted transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={onConfirm}
+            className="rounded-lg bg-destructive px-4 py-2 text-sm font-semibold text-white hover:bg-destructive/90 transition-colors"
+          >
+            Confirm Delete
+          </button>
+        </div>
       </div>
     </div>
   );

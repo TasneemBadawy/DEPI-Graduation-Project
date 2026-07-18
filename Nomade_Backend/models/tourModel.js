@@ -10,10 +10,11 @@ export const createTour = (
   Description,
   Days,
   Nights,
+  Guide_ID,
   images,
 ) => {
   return new Promise((resolve, reject) => {
-    const sql = `INSERT INTO Tours (Tour_name, Price_per_person, Country, City, Street, Description, Days, Nights) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`;
+    const sql = `INSERT INTO Tours (Tour_name, Price_per_person, Country, City, Street, Description, Days, Nights, Guide_ID) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`;
 
     db.query(
       sql,
@@ -26,6 +27,7 @@ export const createTour = (
         Description,
         Days,
         Nights,
+        Guide_ID,
       ],
       (err, result) => {
         if (err) return reject(err);
@@ -52,7 +54,7 @@ export const createTour = (
 export const getAllTours = () => {
   return new Promise((resolve, reject) => {
     const sql = `
-      SELECT t.*, ti.Image_URL 
+      SELECT t.*, ti.Image_URL, t.Guide_ID
       FROM Tours t
       LEFT JOIN Tour_Images ti ON t.Tour_ID = ti.Tour_ID
     `;
@@ -70,9 +72,10 @@ export const getAllTours = () => {
             Country: row.Country,
             City: row.City,
             Street: row.Street,
-            tour_Description: row.tour_Description,
+            Description: row.Description,
             Days: row.Days,
             Nights: row.Nights,
+            Guide_ID: row.Guide_ID,
             images: [],
           };
         }
@@ -89,7 +92,7 @@ export const getAllTours = () => {
 export const getSingleTour = (Tour_ID) => {
   return new Promise((resolve, reject) => {
     const sql = `
-      SELECT t.*, ti.Image_URL 
+      SELECT t.*, ti.Image_URL, t.Guide_ID
       FROM Tours t
       LEFT JOIN Tour_Images ti ON t.Tour_ID = ti.Tour_ID
       WHERE t.Tour_ID = ?
@@ -106,9 +109,10 @@ export const getSingleTour = (Tour_ID) => {
         Country: results[0].Country,
         City: results[0].City,
         Street: results[0].Street,
-        tour_Description: results[0].tour_Description,
+        Description: results[0].Description,
         Days: results[0].Days,
         Nights: results[0].Nights,
+        Guide_ID: results[0].Guide_ID,
         images: [],
       };
 
@@ -120,6 +124,47 @@ export const getSingleTour = (Tour_ID) => {
 
       resolve(tour);
     });
+  });
+};
+
+export const updateTourById = (Tour_ID, updateData) => {
+  return new Promise((resolve, reject) => {
+    const {
+      Tour_name,
+      Price_per_person,
+      Country,
+      City,
+      Street,
+      Description,
+      Days,
+      Nights,
+    } = updateData;
+
+    const sql = `
+      UPDATE Tours 
+      SET Tour_name = ?, Price_per_person = ?, Country = ?, City = ?, 
+          Street = ?, Description = ?, Days = ?, Nights = ?
+      WHERE Tour_ID = ?
+    `;
+
+    db.query(
+      sql,
+      [
+        Tour_name,
+        Price_per_person,
+        Country,
+        City,
+        Street,
+        Description,
+        Days,
+        Nights,
+        Tour_ID,
+      ],
+      (err, result) => {
+        if (err) return reject(err);
+        resolve(result);
+      },
+    );
   });
 };
 
@@ -136,7 +181,7 @@ export const deleteTourById = (Tour_ID) => {
 export const searchAndFilterTours = (country, city, Price) => {
   return new Promise((resolve, reject) => {
     let sql = `
-      SELECT t.*, ti.Image_URL 
+      SELECT t.*, ti.Image_URL, t.Guide_ID
       FROM Tours t
       LEFT JOIN Tour_Images ti ON t.Tour_ID = ti.Tour_ID
       WHERE 1=1
@@ -169,9 +214,10 @@ export const searchAndFilterTours = (country, city, Price) => {
             Country: row.Country,
             City: row.City,
             Street: row.Street,
-            tour_Description: row.tour_Description,
+            Description: row.Description,
             Days: row.Days,
             Nights: row.Nights,
+            Guide_ID: row.Guide_ID,
             images: [],
           };
         }

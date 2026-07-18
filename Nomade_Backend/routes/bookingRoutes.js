@@ -44,7 +44,7 @@ const router = express.Router();
  *         description: Internal server error.
  */
 
-router.post("/" , logInAuthMiddleware , addBooking);
+router.post("/bookings" , logInAuthMiddleware , addBooking);
 
 /**
  * @swagger
@@ -74,7 +74,7 @@ router.post("/" , logInAuthMiddleware , addBooking);
  *       500:
  *         description: Internal server error.
  */
-router.get("/user/:id" , logInAuthMiddleware , getUserBookings);
+router.get("/bookings/user/:id" , logInAuthMiddleware , getUserBookings);
 
 /**
  * @swagger
@@ -105,6 +105,5 @@ router.get("/user/:id" , logInAuthMiddleware , getUserBookings);
  *         description: Internal server error.
  */
 
-router.delete("/:id" , logInAuthMiddleware , removeBooking);
-
+router.delete("/bookings/:id" , logInAuthMiddleware , removeBooking);
 export default router;

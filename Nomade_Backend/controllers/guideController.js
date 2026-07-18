@@ -12,13 +12,28 @@ import {
 } from "../models/guideModel.js";
 import { generateToken } from "../utils/generateToken.js";
 
+// Helper function to get full image URL
+const getFullImageUrl = (imagePath) => {
+  if (!imagePath) return null;
+  if (imagePath.startsWith('http')) return imagePath;
+  const baseUrl = process.env.BASE_URL || 'http://localhost:5000';
+  return `${baseUrl}/${imagePath}`;
+};
+
 //  Get all guides
 export const getGuides = async (req, res) => {
   try {
     const guides = await getAllGuides();
+    
+    // Add full image URLs
+    const guidesWithImages = guides.map(guide => ({
+      ...guide,
+      Profile_Image: getFullImageUrl(guide.Profile_Image)
+    }));
+    
     res.status(200).json({
-      count: guides.length,
-      data: guides,
+      count: guidesWithImages.length,
+      data: guidesWithImages,
     });
   } catch (err) {
     console.error("Error fetching guides:", err);
@@ -48,8 +63,14 @@ export const getGuide = async (req, res) => {
       });
     }
 
+    // Add full image URL
+    const guideWithImage = {
+      ...guide,
+      Profile_Image: getFullImageUrl(guide.Profile_Image)
+    };
+
     res.status(200).json({
-      data: guide,
+      data: guideWithImage,
     });
   } catch (err) {
     console.error("Error fetching guide:", err);
@@ -86,6 +107,16 @@ export const updateGuide = async (req, res) => {
 
   // Validation
   const errors = [];
+  const validateEmail = (email) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
+  const validateSocialMediaUrl = (url) => {
+    if (!url || url === "") return true;
+    const urlRegex = /^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w\.-]*)*\/?$/;
+    return urlRegex.test(url);
+  };
+  
   if (Email && !validateEmail(Email)) errors.push("Valid email is required");
   if (FaceBook && !validateSocialMediaUrl(FaceBook))
     errors.push("Invalid Facebook URL");
@@ -136,10 +167,16 @@ export const updateGuide = async (req, res) => {
     }
 
     const updatedGuide = await getGuideCompleteProfile(id);
+    
+    // Add full image URL
+    const guideWithImage = {
+      ...updatedGuide,
+      Profile_Image: getFullImageUrl(updatedGuide.Profile_Image)
+    };
 
     res.status(200).json({
       message: "Guide profile updated successfully",
-      data: updatedGuide,
+      data: guideWithImage,
     });
   } catch (err) {
     console.error("Error updating guide:", err);
@@ -179,7 +216,14 @@ export const searchGuides = async (req, res) => {
 
   try {
     const guides = await searchAndFilterGuides(Country, specialization);
-    res.status(200).json(guides);
+    
+    // Add full image URLs
+    const guidesWithImages = guides.map(guide => ({
+      ...guide,
+      Profile_Image: getFullImageUrl(guide.Profile_Image)
+    }));
+    
+    res.status(200).json(guidesWithImages);
   } catch (err) {
     res.status(500).json({
       error: err.message,

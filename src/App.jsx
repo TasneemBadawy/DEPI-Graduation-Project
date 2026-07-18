@@ -15,7 +15,7 @@ import DashboardRoot from "./dashboard/page";
 import TourManagement from "./pages/TourManagement/TourManagement";
 import AdminDashboard from "./pages/AdminDashboard/AdminDashboard";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
-
+import Booking from "./pages/Booking";
 function App() {
   const { pathname } = useLocation();
   // Dashboards render their own full header (components/ui/Navbar.jsx),
@@ -37,6 +37,7 @@ function App() {
           <Route path="/tours/:slug" element={<TourDetail />} />
           <Route path="/experiences" element={<Experiences />} />
           <Route path="/experiences/:slug" element={<ExperienceDetail />} />
+          <Route path="/booking/:guideId" element={<Booking />} />
           <Route
             path="/dashboard"
             element={

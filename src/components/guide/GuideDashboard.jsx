@@ -1,34 +1,34 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-DollarSign,
-Check,
-Bell,
-Star,
-X,
-CalendarIcon,
-Users,
-Clock,
-MapPin,
-ChevronRight,
-ArrowUpRight,
-Settings,
-Pencil,
+  DollarSign,
+  Check,
+  Bell,
+  Star,
+  X,
+  CalendarIcon,
+  Users,
+  Clock,
+  MapPin,
+  ChevronRight,
+  ArrowUpRight,
+  Settings,
+  Pencil,
+  Loader2,
 } from "lucide-react";
 
 import Navbar from "../ui/Navbar";
 import StatCard from "../ui/StatCard";
 import MiniCalendar from "../ui/MiniCalendar";
-import { setCurrentUser } from "../../lib/auth";
-/* ── Seed data (mirrors design) ── */
-const SEED_REQUESTS = [
-  { id: "r1", tourist: { name: "Sofia Martinez", country: "Spain" }, tour: "Pyramids of Giza & Sphinx — Private Half Day", date: "May 12, 2026 · 08:30", travelers: 2, total: 240, message: "Hi! We'd love a slower pace with extra time at the Sphinx for photos.", receivedAgo: "2h ago", status: "pending" },
-  { id: "r2", tourist: { name: "Liam O'Connor", country: "Ireland" }, tour: "Old Cairo Walking Tour", date: "May 14, 2026 · 16:00", travelers: 4, total: 180, message: "Looking for something engaging for kids ages 9 and 12.", receivedAgo: "5h ago", status: "pending" },
-  { id: "r3", tourist: { name: "Hana Tanaka", country: "Japan" }, tour: "Felucca Sunset on the Nile", date: "May 18, 2026 · 17:30", travelers: 2, total: 90, message: "Vegetarian-friendly snacks if possible — thank you!", receivedAgo: "1d ago", status: "pending" },
-];
+import Avatar from "../ui/Avatar";
+import { setCurrentUser, getCurrentUser } from "../../lib/auth";
+import { updateGuide, getGuideById } from "../../lib/guideStore";
+import { uploadProfileImage, getProfileImageUrl, validateImageFile } from "../../lib/uploadStore";
+import { getPendingRequests, updateBookingStatus, getAllRequestsForGuide } from "../../lib/bookingStore";
 
+/* ── Constants ── */
 const UPCOMING = [
   { day: "MON", date: "12", title: "Pyramids of Giza — Private", time: "08:30 · 4h", guests: 2, city: "Giza" },
   { day: "WED", date: "14", title: "Khan el-Khalili Bazaar Walk", time: "10:00 · 3h", guests: 3, city: "Cairo" },
@@ -42,10 +42,6 @@ const EARNINGS_WEEKS = [
   { label: "W7", value: 980 }, { label: "W8", value: 1140 },
 ];
 
-function getInitials(name) {
-  return name.split(" ").map((p) => p[0]).join("").toUpperCase();
-}
-
 const DEFAULT_PROFILE = {
   about: "",
   cities: [],
@@ -53,15 +49,92 @@ const DEFAULT_PROFILE = {
   specializations: [],
 };
 
-/* ── Component ── */
+function getInitials(name) {
+  if (!name) return "U";
+  return name.split(" ").map((p) => p[0]).join("").toUpperCase().slice(0, 2);
+}
 
+/* ── Component ── */
 export default function GuideDashboard({ user }) {
   const navigate = useNavigate();
-  const [requests, setRequests] = useState(SEED_REQUESTS);
-  const [name, setName] = useState(user.name);
-  const [profile, setProfile] = useState({ ...DEFAULT_PROFILE, ...user.profile });
+  
+  // State
+  const [requests, setRequests] = useState([]);
+  const [allRequests, setAllRequests] = useState([]);
+  const [requestsLoading, setRequestsLoading] = useState(true);
+  const [name, setName] = useState(user?.name || "");
+  const [email, setEmail] = useState(user?.email || "");
+  const [profile, setProfile] = useState({ ...DEFAULT_PROFILE, ...user?.profile });
+  const [profileImage, setProfileImage] = useState(user?.profileImage || null);
   const [editOpen, setEditOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
+  const [isLoading, setIsLoading] = useState(true);
+  const fileInputRef = useRef(null);
+
+  const guideId = user?.id || user?.Guide_ID;
   const pendingCount = requests.filter((r) => r.status === "pending").length;
+
+  // Load requests from localStorage
+  useEffect(() => {
+    const loadRequests = () => {
+      if (!guideId) {
+        setRequestsLoading(false);
+        return;
+      }
+      const pending = getPendingRequests(guideId);
+      const all = getAllRequestsForGuide(guideId);
+      setRequests(pending);
+      setAllRequests(all);
+      setRequestsLoading(false);
+    };
+    loadRequests();
+
+    // Listen for storage changes (bookings from other tabs)
+    const handleStorage = () => {
+      if (guideId) {
+        setRequests(getPendingRequests(guideId));
+        setAllRequests(getAllRequestsForGuide(guideId));
+      }
+    };
+    window.addEventListener("storage", handleStorage);
+    return () => window.removeEventListener("storage", handleStorage);
+  }, [guideId]);
+
+  // Load guide data from backend
+  useEffect(() => {
+    const loadGuideData = async () => {
+      if (!guideId) {
+        setIsLoading(false);
+        return;
+      }
+      
+      try {
+        const guideData = await getGuideById(guideId);
+        if (guideData) {
+          const fullName = `${guideData.FName || ''} ${guideData.LName || ''}`.trim();
+          setName(fullName || user?.name || "Guide");
+          setEmail(guideData.Email || user?.email || "");
+          setProfile({
+            about: guideData.About || "",
+            cities: guideData.cities || [],
+            languages: guideData.languages || [],
+            specializations: guideData.specializations || [],
+          });
+          if (guideData.Profile_Image) {
+            setProfileImage(getProfileImageUrl(guideData.Profile_Image));
+          }
+        }
+      } catch (err) {
+        console.error("Error loading guide data:", err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    loadGuideData();
+  }, [guideId, user?.name, user?.email]);
 
   const stats = useMemo(() => [
     { label: "Earnings (30d)", value: "$4,820", delta: "+18%", Icon: DollarSign, accent: "primary" },
@@ -70,19 +143,113 @@ export default function GuideDashboard({ user }) {
     { label: "Avg. Rating", value: "4.92", delta: "From 187 reviews", Icon: Star, accent: "secondary" },
   ], [pendingCount]);
 
-  const respond = (id, status) =>
-    setRequests((prev) => prev.map((r) => (r.id === id ? { ...r, status } : r)));
+  const respond = (id, status) => {
+    updateBookingStatus(id, status);
+    if (guideId) {
+      setRequests(getPendingRequests(guideId));
+      setAllRequests(getAllRequestsForGuide(guideId));
+    }
+  };
 
   const max = Math.max(...EARNINGS_WEEKS.map((x) => x.value));
 
-  const handleSaveProfile = (updated) => {
-    setName(updated.name);
-    setProfile(updated.profile);
-    // Persist to the session so it survives a refresh and is reflected
-    // anywhere else that reads the current user (e.g. lib/auth.js consumers).
-    setCurrentUser({ ...user, name: updated.name, profile: { ...user.profile, ...updated.profile } });
-    setEditOpen(false);
+  const handleImageUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const validation = validateImageFile(file);
+    if (!validation.valid) {
+      setError(validation.error);
+      return;
+    }
+
+    setUploading(true);
+    setError("");
+    
+    try {
+      if (!guideId) throw new Error("Guide ID not found");
+
+      const result = await uploadProfileImage(file, guideId, "guide");
+      
+      // Update local state
+      const imageUrl = getProfileImageUrl(result.Profile_Image);
+      setProfileImage(imageUrl);
+      
+      // Update localStorage user
+      const currentUser = JSON.parse(localStorage.getItem("nomade_current_user") || "{}");
+      const updatedUser = {
+        ...currentUser,
+        profileImage: result.Profile_Image,
+      };
+      setCurrentUser(updatedUser);
+      
+      setSuccess("Profile photo updated successfully!");
+      setTimeout(() => setSuccess(""), 3000);
+    } catch (err) {
+      console.error("Error uploading image:", err);
+      setError(err.message || "Failed to upload image");
+      setTimeout(() => setError(""), 3000);
+    } finally {
+      setUploading(false);
+    }
   };
+
+  const handleSaveProfile = async (updated) => {
+    setLoading(true);
+    setError("");
+    setSuccess("");
+
+    try {
+      if (!guideId) throw new Error("Guide ID not found");
+
+      const updateData = {
+        FName: updated.name.split(" ")[0] || "",
+        LName: updated.name.split(" ").slice(1).join(" ") || "",
+        Email: updated.email || "",
+        About: updated.profile.about || "",
+        languages: updated.profile.languages || [],
+        specializations: updated.profile.specializations || [],
+      };
+
+      await updateGuide(guideId, updateData);
+
+      setName(updated.name);
+      setEmail(updated.email);
+      setProfile(updated.profile);
+
+      const currentUser = JSON.parse(localStorage.getItem("nomade_current_user") || "{}");
+      const updatedUser = {
+        ...currentUser,
+        name: updated.name,
+        email: updated.email,
+        profile: { ...currentUser.profile, ...updated.profile },
+      };
+      setCurrentUser(updatedUser);
+
+      setSuccess("Profile updated successfully!");
+      setEditOpen(false);
+
+      setTimeout(() => {
+        window.location.reload();
+      }, 1500);
+    } catch (err) {
+      console.error("Error saving profile:", err);
+      setError(err.message || "Failed to save profile. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (isLoading || requestsLoading) {
+    return (
+      <div style={{ minHeight: "100vh", background: "var(--background)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <div className="flex flex-col items-center gap-4">
+          <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
+          <p style={{ color: "var(--muted-foreground)" }}>Loading your profile...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div style={{ minHeight: "100vh", background: "var(--background)" }}>
@@ -97,7 +264,7 @@ export default function GuideDashboard({ user }) {
               Guide Workspace
             </p>
             <h1 style={{ marginTop: 4, fontSize: 32, fontWeight: 600, letterSpacing: "-0.5px", color: "var(--foreground)", margin: "4px 0 6px" }}>
-              Welcome back, {name.split(" ")[0]}
+              Welcome back, {name.split(" ")[0] || "Guide"}
             </h1>
             <p style={{ fontSize: 14, color: "var(--muted-foreground)", margin: 0 }}>
               You have <strong style={{ color: "var(--foreground)" }}>{pendingCount} pending requests</strong> and{" "}
@@ -105,10 +272,22 @@ export default function GuideDashboard({ user }) {
             </p>
           </div>
           <div style={{ display: "flex", gap: 8 }}>
-            <button className="btn btn-outline btn-sm"><CalendarIcon size={14} /> Block dates</button>
-            <button className="btn btn-warm btn-sm" onClick={() => navigate("/dashboard/guide/tours")}><Settings size={14} /> Tour settings</button>
+            <button className="btn btn-warm btn-sm" onClick={() => navigate("/dashboard/guide/tours")}>
+              <Settings size={14} /> Tour settings
+            </button>
           </div>
         </section>
+
+        {error && (
+          <div style={{ background: "var(--destructive)", color: "white", padding: 12, borderRadius: 10, marginBottom: 16 }}>
+            {error}
+          </div>
+        )}
+        {success && (
+          <div style={{ background: "var(--success)", color: "white", padding: 12, borderRadius: 10, marginBottom: 16 }}>
+            {success}
+          </div>
+        )}
 
         {/* Stats */}
         <section style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16, marginBottom: 24 }}>
@@ -129,51 +308,67 @@ export default function GuideDashboard({ user }) {
                 </div>
                 <span className="pill pill-primary">{pendingCount} new</span>
               </div>
-              <ul style={{ listStyle: "none", padding: 0, margin: 0 }} className="divide-y">
-                {requests.map((r) => (
-                  <li key={r.id} style={{ padding: "20px 24px" }}>
-                    <div style={{ display: "flex", flexWrap: "wrap", alignItems: "flex-start", justifyContent: "space-between", gap: 16 }}>
-                      <div style={{ display: "flex", alignItems: "flex-start", gap: 12, flex: 1, minWidth: 0 }}>
-                        <div className="avatar avatar-secondary" style={{ width: 44, height: 44, fontSize: 14, outline: "2px solid var(--card)" }}>
-                          {getInitials(r.tourist.name)}
+              {requests.length === 0 ? (
+                <div style={{ padding: "40px 24px", textAlign: "center" }}>
+                  <p style={{ color: "var(--muted-foreground)", fontSize: 14 }}>No pending requests</p>
+                  <p style={{ color: "var(--muted-foreground)", fontSize: 12, marginTop: 4 }}>When travelers book your tours, they'll appear here.</p>
+                </div>
+              ) : (
+                <ul style={{ listStyle: "none", padding: 0, margin: 0 }} className="divide-y">
+                  {requests.map((r) => (
+                    <li key={r.id} style={{ padding: "20px 24px" }}>
+                      <div style={{ display: "flex", flexWrap: "wrap", alignItems: "flex-start", justifyContent: "space-between", gap: 16 }}>
+                        <div style={{ display: "flex", alignItems: "flex-start", gap: 12, flex: 1, minWidth: 0 }}>
+                          <div className="avatar avatar-secondary" style={{ width: 44, height: 44, fontSize: 14, outline: "2px solid var(--card)" }}>
+                            {getInitials(r.touristName)}
+                          </div>
+                          <div style={{ minWidth: 0, flex: 1 }}>
+                            <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 6 }}>
+                              <span style={{ fontWeight: 500, fontSize: 14 }}>{r.touristName}</span>
+                              <span style={{ fontSize: 12, color: "var(--muted-foreground)" }}>· {r.touristCountry}</span>
+                              <span style={{ fontSize: 12, color: "var(--muted-foreground)" }}>· {r.ago || r.receivedAgo || "Just now"}</span>
+                            </div>
+                            <p style={{ marginTop: 2, fontSize: 14, fontWeight: 500, margin: "2px 0 4px" }}>{r.tourTitle}</p>
+                            <div style={{ display: "flex", flexWrap: "wrap", gap: "4px 16px", fontSize: 12, color: "var(--muted-foreground)" }}>
+                              <span style={{ display: "flex", alignItems: "center", gap: 4 }}><CalendarIcon size={13} /> {r.date}</span>
+                              <span style={{ display: "flex", alignItems: "center", gap: 4 }}><Users size={13} /> {r.travelers} travelers</span>
+                              <span style={{ display: "flex", alignItems: "center", gap: 4, color: "var(--primary)", fontWeight: 500 }}>
+                                <DollarSign size={13} />{r.price || r.total}
+                              </span>
+                              {r.paymentMethod && (
+                                <span style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11 }}>
+                                  💳 {r.paymentMethod}
+                                </span>
+                              )}
+                            </div>
+                            {r.note && (
+                              <p style={{ marginTop: 8, borderRadius: 10, background: "var(--muted)", padding: "8px 12px", fontSize: 13, color: "var(--foreground)", opacity: 0.8, margin: "8px 0 0" }}>
+                                &ldquo;{r.note}&rdquo;
+                              </p>
+                            )}
+                          </div>
                         </div>
-                        <div style={{ minWidth: 0, flex: 1 }}>
-                          <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 6 }}>
-                            <span style={{ fontWeight: 500, fontSize: 14 }}>{r.tourist.name}</span>
-                            <span style={{ fontSize: 12, color: "var(--muted-foreground)" }}>· {r.tourist.country}</span>
-                            <span style={{ fontSize: 12, color: "var(--muted-foreground)" }}>· {r.receivedAgo}</span>
-                          </div>
-                          <p style={{ marginTop: 2, fontSize: 14, fontWeight: 500, margin: "2px 0 4px" }}>{r.tour}</p>
-                          <div style={{ display: "flex", flexWrap: "wrap", gap: "4px 16px", fontSize: 12, color: "var(--muted-foreground)" }}>
-                            <span style={{ display: "flex", alignItems: "center", gap: 4 }}><CalendarIcon size={13} /> {r.date}</span>
-                            <span style={{ display: "flex", alignItems: "center", gap: 4 }}><Users size={13} /> {r.travelers} travelers</span>
-                            <span style={{ display: "flex", alignItems: "center", gap: 4, color: "var(--primary)", fontWeight: 500 }}><DollarSign size={13} />{r.total}</span>
-                          </div>
-                          <p style={{ marginTop: 8, borderRadius: 10, background: "var(--muted)", padding: "8px 12px", fontSize: 13, color: "var(--foreground)", opacity: 0.8, margin: "8px 0 0" }}>
-                            &ldquo;{r.message}&rdquo;
-                          </p>
+                        <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+                          {r.status === "pending" ? (
+                            <>
+                              <button className="btn btn-danger btn-sm" onClick={() => respond(r.id, "declined")}>
+                                <X size={14} /> Decline
+                              </button>
+                              <button className="btn btn-warm btn-sm" onClick={() => respond(r.id, "accepted")}>
+                                <Check size={14} /> Accept
+                              </button>
+                            </>
+                          ) : (
+                            <span className={`pill ${r.status === "accepted" ? "pill-accepted" : "pill-declined"}`}>
+                              {r.status === "accepted" ? "Accepted" : "Declined"}
+                            </span>
+                          )}
                         </div>
                       </div>
-                      <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
-                        {r.status === "pending" ? (
-                          <>
-                            <button className="btn btn-danger btn-sm" onClick={() => respond(r.id, "declined")}>
-                              <X size={14} /> Decline
-                            </button>
-                            <button className="btn btn-warm btn-sm" onClick={() => respond(r.id, "accepted")}>
-                              <Check size={14} /> Accept
-                            </button>
-                          </>
-                        ) : (
-                          <span className={`pill ${r.status === "accepted" ? "pill-accepted" : "pill-declined"}`}>
-                            {r.status === "accepted" ? "Accepted" : "Declined"}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </li>
-                ))}
-              </ul>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
 
             {/* Earnings */}
@@ -271,9 +466,54 @@ export default function GuideDashboard({ user }) {
                 </button>
               </div>
 
-              <p style={{ marginTop: 12, fontSize: 13, fontWeight: 600, margin: "12px 0 0" }}>{name}</p>
+              {/* Profile Photo Section */}
+              <div style={{ marginTop: 12, display: "flex", alignItems: "center", gap: 16 }}>
+                <div style={{ position: "relative" }}>
+                  <Avatar 
+                    src={profileImage || user?.profileImage} 
+                    name={name}
+                    size="2xl"
+                  />
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    style={{ display: "none" }}
+                    onChange={handleImageUpload}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={uploading}
+                    style={{
+                      position: "absolute",
+                      bottom: 0,
+                      right: 0,
+                      background: "var(--primary)",
+                      color: "white",
+                      border: "2px solid var(--card)",
+                      borderRadius: "50%",
+                      width: 28,
+                      height: 28,
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      fontSize: 12,
+                    }}
+                  >
+                    {uploading ? "..." : "📷"}
+                  </button>
+                </div>
+                <div>
+                  <p style={{ fontSize: 13, fontWeight: 600, margin: 0 }}>{name}</p>
+                  <p style={{ fontSize: 11, color: "var(--muted-foreground)", margin: "2px 0 0" }}>
+                    {email || "No email set"}
+                  </p>
+                </div>
+              </div>
 
-              <p style={{ marginTop: 6, fontSize: 12, color: "var(--muted-foreground)", lineHeight: 1.5, margin: "6px 0 0" }}>
+              <p style={{ marginTop: 12, fontSize: 12, color: "var(--muted-foreground)", lineHeight: 1.5, margin: "12px 0 0" }}>
                 {profile.about || "No bio yet — click Edit profile to add one."}
               </p>
 
@@ -288,14 +528,18 @@ export default function GuideDashboard({ user }) {
       {editOpen && (
         <EditProfileModal
           initialName={name}
+          initialEmail={email}
           initialProfile={profile}
           onCancel={() => setEditOpen(false)}
           onSave={handleSaveProfile}
+          loading={loading}
         />
       )}
     </div>
   );
 }
+
+/* ── Sub-components ── */
 
 function ProfileTagRow({ label, values }) {
   if (!values || values.length === 0) return null;
@@ -313,8 +557,9 @@ function ProfileTagRow({ label, values }) {
   );
 }
 
-function EditProfileModal({ initialName, initialProfile, onCancel, onSave }) {
+function EditProfileModal({ initialName, initialEmail, initialProfile, onCancel, onSave, loading }) {
   const [name, setName] = useState(initialName);
+  const [email, setEmail] = useState(initialEmail || "");
   const [about, setAbout] = useState(initialProfile.about || "");
   const [cities, setCities] = useState((initialProfile.cities || []).join(", "));
   const [languages, setLanguages] = useState((initialProfile.languages || []).join(", "));
@@ -325,8 +570,13 @@ function EditProfileModal({ initialName, initialProfile, onCancel, onSave }) {
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!name.trim()) return;
+    if (email.trim() && !email.includes('@')) {
+      alert("Please enter a valid email address.");
+      return;
+    }
     onSave({
       name: name.trim(),
+      email: email.trim(),
       profile: {
         about: about.trim(),
         cities: toList(cities),
@@ -352,34 +602,80 @@ function EditProfileModal({ initialName, initialProfile, onCancel, onSave }) {
       >
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <h2 style={{ fontSize: 18, fontWeight: 600, margin: 0 }}>Edit profile</h2>
-          <button type="button" onClick={onCancel} className="btn-icon" aria-label="Close">
+          <button type="button" onClick={onCancel} className="btn-icon" aria-label="Close" disabled={loading}>
             <X size={18} />
           </button>
         </div>
 
         <ModalField label="Name">
-          <input value={name} onChange={(e) => setName(e.target.value)} style={inputStyle} />
+          <input 
+            value={name} 
+            onChange={(e) => setName(e.target.value)} 
+            style={inputStyle} 
+            disabled={loading}
+            placeholder="Your full name"
+          />
+        </ModalField>
+
+        <ModalField label="Email" hint="We'll use this for booking notifications and account updates">
+          <input 
+            type="email"
+            value={email} 
+            onChange={(e) => setEmail(e.target.value)} 
+            style={inputStyle} 
+            disabled={loading}
+            placeholder="your@email.com"
+          />
         </ModalField>
 
         <ModalField label="About">
-          <textarea value={about} onChange={(e) => setAbout(e.target.value)} rows={4} style={{ ...inputStyle, resize: "vertical", fontFamily: "inherit" }} />
+          <textarea 
+            value={about} 
+            onChange={(e) => setAbout(e.target.value)} 
+            rows={4} 
+            style={{ ...inputStyle, resize: "vertical", fontFamily: "inherit" }} 
+            disabled={loading}
+            placeholder="Tell travelers about yourself, your experience, and what makes your tours special..."
+          />
         </ModalField>
 
         <ModalField label="Cities" hint="Comma-separated, e.g. Cairo, Luxor, Aswan">
-          <input value={cities} onChange={(e) => setCities(e.target.value)} style={inputStyle} />
+          <input 
+            value={cities} 
+            onChange={(e) => setCities(e.target.value)} 
+            style={inputStyle} 
+            disabled={loading}
+            placeholder="Cairo, Luxor, Aswan"
+          />
         </ModalField>
 
         <ModalField label="Languages" hint="Comma-separated, e.g. English, Arabic, French">
-          <input value={languages} onChange={(e) => setLanguages(e.target.value)} style={inputStyle} />
+          <input 
+            value={languages} 
+            onChange={(e) => setLanguages(e.target.value)} 
+            style={inputStyle} 
+            disabled={loading}
+            placeholder="English, Arabic, French"
+          />
         </ModalField>
 
-        <ModalField label="Specializations" hint="Comma-separated, e.g. Ancient Egypt, Diving">
-          <input value={specializations} onChange={(e) => setSpecializations(e.target.value)} style={inputStyle} />
+        <ModalField label="Specializations" hint="Comma-separated, e.g. Ancient Egypt, Diving, History">
+          <input 
+            value={specializations} 
+            onChange={(e) => setSpecializations(e.target.value)} 
+            style={inputStyle} 
+            disabled={loading}
+            placeholder="Ancient Egypt, Diving, History"
+          />
         </ModalField>
 
         <div style={{ marginTop: 24, display: "flex", justifyContent: "flex-end", gap: 8 }}>
-          <button type="button" onClick={onCancel} className="btn btn-outline btn-sm">Cancel</button>
-          <button type="submit" className="btn btn-warm btn-sm">Save changes</button>
+          <button type="button" onClick={onCancel} className="btn btn-outline btn-sm" disabled={loading}>
+            Cancel
+          </button>
+          <button type="submit" className="btn btn-warm btn-sm" disabled={loading}>
+            {loading ? <><Loader2 className="h-4 w-4 animate-spin" /> Saving...</> : "Save changes"}
+          </button>
         </div>
       </form>
     </div>

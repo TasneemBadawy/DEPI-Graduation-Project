@@ -25,7 +25,6 @@ export default function Footer() {
           <span>© {new Date().getFullYear()} Nomade Travel Co. All rights reserved.</span>
           <div className="flex items-center gap-4">
             <span>Made with care for travelers worldwide</span>
-            <Link to="/dashboard/admin" className="text-muted-foreground/60 hover:text-foreground">Admin</Link>
           </div>
         </div>
       </div>

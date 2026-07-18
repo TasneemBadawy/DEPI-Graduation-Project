@@ -1,7 +1,11 @@
 import express from "express";
-import { addReview , getReviewsWithUserId ,RemoveReview , getReviewsWithPlace } from "../controllers/reviewsController.js";
-
-import logInAuthMiddleware from '../middlewares/authMiddleware.js'
+import { 
+  addReview, 
+  getReviewsWithUserId, 
+  RemoveReview, 
+  getReviewsWithPlace 
+} from "../controllers/reviewsController.js";
+import logInAuthMiddleware from '../middlewares/authMiddleware.js';
 
 const router = express.Router();
 
@@ -12,7 +16,7 @@ const router = express.Router();
  *     tags:
  *       - Reviews
  *     summary: Add a new review
- *     description: Allows an authenticated user to add a review for a place.
+ *     description: Allows an authenticated user to add a review for a guide.
  *     security:
  *       - bearerAuth: []
  *     requestBody:
@@ -23,16 +27,16 @@ const router = express.Router();
  *             type: object
  *             required:
  *               - User_ID
- *               - Place
+ *               - Guide_ID
  *               - Rate
  *               - Content
  *             properties:
  *               User_ID:
  *                 type: integer
  *                 example: 1
- *               Place:
- *                 type: string
- *                 example: Cairo Tower
+ *               Guide_ID:
+ *                 type: integer
+ *                 example: 5
  *               Title:
  *                 type: string
  *                 example: Amazing Experience
@@ -46,7 +50,7 @@ const router = express.Router();
  *                 example: Tasneem
  *               Content:
  *                 type: string
- *                 example: The place was beautiful and well organized.
+ *                 example: The guide was very professional and friendly.
  *     responses:
  *       201:
  *         description: Review added successfully.
@@ -57,35 +61,61 @@ const router = express.Router();
  *       500:
  *         description: Internal server error.
  */
-
 router.post("/", logInAuthMiddleware, addReview);
 
 /**
  * @swagger
- * /reviews/place/{place}:
+ * /reviews/place/{guideId}:
  *   get:
  *     tags:
  *       - Reviews
- *     summary: Get reviews by place
- *     description: Retrieve all reviews for a specific place.
+ *     summary: Get reviews by guide ID
+ *     description: Retrieve all reviews written for a specific tour guide.
  *     parameters:
  *       - in: path
- *         name: place
+ *         name: guideId
  *         required: true
- *         description: Place name
+ *         description: Guide ID
  *         schema:
- *           type: string
- *         example: Cairo Tower
+ *           type: integer
+ *         example: 4
  *     responses:
  *       200:
  *         description: Reviews retrieved successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   Review_ID:
+ *                     type: integer
+ *                     example: 1
+ *                   User_ID:
+ *                     type: integer
+ *                     example: 3
+ *                   Guide_ID:
+ *                     type: integer
+ *                     example: 4
+ *                   Title:
+ *                     type: string
+ *                     example: Amazing Experience
+ *                   Rate:
+ *                     type: integer
+ *                     example: 5
+ *                   username:
+ *                     type: string
+ *                     example: Tasneem
+ *                   Content:
+ *                     type: string
+ *                     example: The guide was very professional and friendly.
  *       404:
- *         description: No reviews found.
+ *         description: No reviews found for this guide.
  *       500:
  *         description: Internal server error.
  */
-
-router.get("/place/:place", getReviewsWithPlace);
+router.get("/place/:guideId", getReviewsWithPlace);
 
 /**
  * @swagger
@@ -111,7 +141,6 @@ router.get("/place/:place", getReviewsWithPlace);
  *       500:
  *         description: Internal server error.
  */
-
 router.get("/user/:id", getReviewsWithUserId);
 
 /**
@@ -144,7 +173,6 @@ router.get("/user/:id", getReviewsWithUserId);
  *       500:
  *         description: Internal server error.
  */
-
 router.delete("/:id", logInAuthMiddleware, RemoveReview);
 
 export default router;

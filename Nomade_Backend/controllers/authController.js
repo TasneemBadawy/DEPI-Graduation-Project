@@ -16,10 +16,10 @@ const validatePassword = (password) => {
 
 const validateSocialMediaUrl = (url) => {
   if (!url || url === "") return true;
-  const urlRegex =
-    /^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w\.-]*)*\/?$/;
+  const urlRegex = /^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w\.-]*)*\/?$/;
   return urlRegex.test(url);
 };
+
 /***************************Register Tourist**************************/
 export const registerTourist = async (req, res) => {
   const { FName, LName, Email, Password } = req.body;
@@ -55,7 +55,11 @@ export const registerTourist = async (req, res) => {
       Profile_Image,
     });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error("Tourist registration error:", err);
+    res.status(500).json({ 
+      error: err.message,
+      details: err.sqlMessage || "Unknown database error"
+    });
   }
 };
 
@@ -92,7 +96,7 @@ export const logInTourist = async (req, res) => {
       });
     }
 
-    const token = generateToken(Email);
+    const token = generateToken(tourist.User_ID, "tourist");
     delete tourist.Password;
 
     res.status(200).json({
@@ -110,63 +114,73 @@ export const logInTourist = async (req, res) => {
 };
 
 /******************************Guide********************************************/
+
 /***************************Register Guide**********************************/
-
-// Register a new guide
 export const registerGuide = async (req, res) => {
-  const {
-    FName,
-    LName,
-    Email,
-    Password,
-    Country,
-    About,
-    FaceBook,
-    Linkedin,
-    Instagram,
-    phoneNumbers = [],
-    specializations = [],
-    certificates = [],
-    languages = [],
-  } = req.body;
-
-  const Profile_Image = req.file ? req.file.path : null;
-
-  // Validation
-  const errors = [];
-
-  if (!FName || FName.trim() === "") errors.push("First name is required");
-  if (!LName || LName.trim() === "") errors.push("Last name is required");
-  if (!Email || !validateEmail(Email)) errors.push("Valid email is required");
-  if (!Password || !validatePassword(Password))
-    errors.push("Password must be at least 6 characters");
-  if (Country && Country.length > 50) errors.push("Country name too long");
-  if (About && About.length > 65535) errors.push("About section too long");
-  if (FaceBook && !validateSocialMediaUrl(FaceBook))
-    errors.push("Invalid Facebook URL");
-  if (Linkedin && !validateSocialMediaUrl(Linkedin))
-    errors.push("Invalid LinkedIn URL");
-  if (Instagram && !validateSocialMediaUrl(Instagram))
-    errors.push("Invalid Instagram URL");
-
-  if (errors.length > 0) {
-    return res.status(400).json({ errors });
-  }
-
+  console.log("=== Guide Registration Started ===");
+  console.log("Request body:", req.body);
+  console.log("Request file:", req.file);
+  
   try {
+    const {
+      FName,
+      LName,
+      Email,
+      Password,
+      Country,
+      About,
+      FaceBook,
+      Linkedin,
+      Instagram,
+      phoneNumbers = [],
+      specializations = [],
+      certificates = [],
+      languages = [],
+    } = req.body;
+
+    const Profile_Image = req.file ? req.file.path : null;
+
+    console.log("Parsed data:", { FName, LName, Email, Country, languages, specializations });
+
+    // Validation
+    const errors = [];
+
+    if (!FName || FName.trim() === "") errors.push("First name is required");
+    if (!LName || LName.trim() === "") errors.push("Last name is required");
+    if (!Email || !validateEmail(Email)) errors.push("Valid email is required");
+    if (!Password || !validatePassword(Password))
+      errors.push("Password must be at least 6 characters");
+    if (Country && Country.length > 50) errors.push("Country name too long");
+    if (About && About.length > 65535) errors.push("About section too long");
+    if (FaceBook && !validateSocialMediaUrl(FaceBook))
+      errors.push("Invalid Facebook URL");
+    if (Linkedin && !validateSocialMediaUrl(Linkedin))
+      errors.push("Invalid LinkedIn URL");
+    if (Instagram && !validateSocialMediaUrl(Instagram))
+      errors.push("Invalid Instagram URL");
+
+    if (errors.length > 0) {
+      console.log("Validation errors:", errors);
+      return res.status(400).json({ errors });
+    }
+
     // Check if guide already exists
+    console.log("Checking if guide exists...");
     const existingGuide = await findGuideByEmail(Email);
     if (existingGuide) {
+      console.log("Guide already exists:", Email);
       return res.status(409).json({
         error: "A guide with this email already exists",
       });
     }
 
     // Hash password
+    console.log("Hashing password...");
     const hashedPassword = await bcrypt.hash(Password, 10);
 
     // Create guide with all related data
-    await createGuide(
+    console.log("Creating guide...");
+    const result = await createGuide(
       FName,
       LName,
       Email,
@@ -183,15 +197,26 @@ export const registerGuide = async (req, res) => {
       Profile_Image,
     );
 
+    console.log("Guide created successfully:", result);
+
     res.status(201).json({
       message: "Guide registered successfully",
       Profile_Image,
+      guideId: result.guideId,
     });
   } catch (err) {
-    console.error("Guide registration error:", err);
+    console.error("=== Guide Registration Error ===");
+    console.error("Error name:", err.name);
+    console.error("Error message:", err.message);
+    console.error("Error stack:", err.stack);
+    console.error("SQL Error:", err.sqlMessage || "None");
+    console.error("SQL Code:", err.code || "None");
+    
+    // Send more detailed error for debugging
     res.status(500).json({
       error: "Failed to register guide",
       message: err.message,
+      details: err.sqlMessage || err.code || "Unknown database error",
     });
   }
 };
@@ -229,7 +254,7 @@ export const loginGuide = async (req, res) => {
       });
     }
 
-    const token = generateToken(Email);
+    const token = generateToken(guide.Guide_ID, "guide");
     delete guide.Password;
 
     res.status(200).json({

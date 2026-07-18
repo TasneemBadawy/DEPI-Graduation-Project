@@ -3,25 +3,39 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Plus, MapPin, Pencil, Trash2, X, ImagePlus } from "lucide-react";
 import { getCurrentUser } from "../../lib/auth";
-import { getMyTours, addTour, updateTour, deleteTour, slugify } from "../../lib/tourStore";
+import { getMyTours, addTour, updateTour, deleteTour } from "../../lib/tourStore";
 
 export default function TourManagement() {
   const navigate = useNavigate();
   const user = getCurrentUser();
-  // Stable per-guide identifiers even for a guide who only logged in and
-  // never filled out the full registration profile.
-  const guideKey = user?.email || "guide";
-  const guideSlug = user?.profile?.slug || slugify(user?.name || "guide");
-
   const [tours, setTours] = useState([]);
   const [modalOpen, setModalOpen] = useState(false);
-  const [editingTour, setEditingTour] = useState(null); // null = adding, tour object = editing
+  const [editingTour, setEditingTour] = useState(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    setTours(getMyTours(guideKey));
-  }, [guideKey]);
+    const fetchTours = async () => {
+      setLoading(true);
+      try {
+        const myTours = await getMyTours();
+        setTours(myTours);
+      } catch (error) {
+        console.error("Error fetching tours:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchTours();
+  }, []);
 
-  const refresh = () => setTours(getMyTours(guideKey));
+  const refresh = async () => {
+    try {
+      const myTours = await getMyTours();
+      setTours(myTours);
+    } catch (error) {
+      console.error("Error refreshing tours:", error);
+    }
+  };
 
   const openAddModal = () => {
     setEditingTour(null);
@@ -32,21 +46,39 @@ export default function TourManagement() {
     setModalOpen(true);
   };
 
-  const handleSave = (data) => {
-    if (editingTour) {
-      updateTour(editingTour.slug, data);
-    } else {
-      addTour(guideKey, guideSlug, data);
+  const handleSave = async (data) => {
+    try {
+      if (editingTour) {
+        await updateTour(editingTour.slug, data);
+      } else {
+        await addTour(data);
+      }
+      await refresh();
+      setModalOpen(false);
+    } catch (error) {
+      console.error("Error saving tour:", error);
+      alert(error.message || "Failed to save tour. Please try again.");
     }
-    refresh();
-    setModalOpen(false);
   };
 
-  const handleDelete = (tour) => {
+  const handleDelete = async (tour) => {
     if (!window.confirm(`Delete "${tour.title}"? This can't be undone.`)) return;
-    deleteTour(tour.slug);
-    refresh();
+    try {
+      await deleteTour(tour.slug);
+      await refresh();
+    } catch (error) {
+      console.error("Error deleting tour:", error);
+      alert(error.message || "Failed to delete tour. Please try again.");
+    }
   };
+
+  if (loading) {
+    return (
+      <div style={{ minHeight: "100vh", background: "var(--color-primary-soft)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <p>Loading your tours...</p>
+      </div>
+    );
+  }
 
   return (
     <div style={{ minHeight: "100vh", background: "var(--color-primary-soft)" }}>
@@ -143,34 +175,53 @@ function TourModal({ initial, onCancel, onSave }) {
   const isEdit = Boolean(initial);
   const [title, setTitle] = useState(initial?.title || "");
   const [city, setCity] = useState(initial?.city || "");
+  const [country, setCountry] = useState(initial?.country || "");
   const [price, setPrice] = useState(initial?.price ?? "");
-  const [duration, setDuration] = useState(initial?.duration || "");
+  const [days, setDays] = useState(initial?.days ?? 1);
+  const [nights, setNights] = useState(initial?.nights ?? 0);
   const [description, setDescription] = useState(initial?.description || "");
   const [image, setImage] = useState(initial?.image || "");
+  const [imageFiles, setImageFiles] = useState([]);
   const [error, setError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
   const handleImageChange = (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => setImage(reader.result);
-    reader.readAsDataURL(file);
+    const files = Array.from(e.target.files || []);
+    if (files.length > 0) {
+      setImageFiles(files);
+      const reader = new FileReader();
+      reader.onload = () => setImage(reader.result);
+      reader.readAsDataURL(files[0]);
+    }
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    setError("");
+    
     if (!title.trim() || !city.trim() || !price) {
       setError("Tour name, location, and price are required.");
       return;
     }
-    onSave({
-      title: title.trim(),
-      city: city.trim(),
-      price,
-      duration: duration.trim(),
-      description: description.trim(),
-      image,
-    });
+
+    setSubmitting(true);
+    try {
+      await onSave({
+        title: title.trim(),
+        city: city.trim(),
+        country: country.trim(),
+        price: Number(price),
+        days: Number(days) || 1,
+        nights: Number(nights) || 0,
+        description: description.trim(),
+        image,
+        imageFiles,
+      });
+    } catch (err) {
+      setError(err.message || "Failed to save tour. Please try again.");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -212,24 +263,50 @@ function TourModal({ initial, onCancel, onSave }) {
 
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginTop: 16 }}>
           <div>
-            <label style={labelStyle}>Location</label>
-            <input value={city} onChange={(e) => setCity(e.target.value)} placeholder="Cairo, Egypt" className="form-input" />
+            <label style={labelStyle}>City</label>
+            <input value={city} onChange={(e) => setCity(e.target.value)} placeholder="Cairo" className="form-input" />
           </div>
+          <div>
+            <label style={labelStyle}>Country</label>
+            <input value={country} onChange={(e) => setCountry(e.target.value)} placeholder="Egypt" className="form-input" />
+          </div>
+        </div>
+
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginTop: 16 }}>
           <div>
             <label style={labelStyle}>Price per person (USD)</label>
             <input
               type="number"
               min="0"
+              step="0.01"
               value={price}
               onChange={(e) => setPrice(e.target.value)}
               placeholder="60"
               className="form-input"
             />
           </div>
+          <div>
+            <label style={labelStyle}>Days</label>
+            <input
+              type="number"
+              min="1"
+              value={days}
+              onChange={(e) => setDays(e.target.value)}
+              placeholder="1"
+              className="form-input"
+            />
+          </div>
         </div>
 
-        <ModalField label="Duration" hint="e.g. Half day · 4h, or 2 days · 1 night">
-          <input value={duration} onChange={(e) => setDuration(e.target.value)} placeholder="Half day · 4h" className="form-input" />
+        <ModalField label="Nights">
+          <input
+            type="number"
+            min="0"
+            value={nights}
+            onChange={(e) => setNights(e.target.value)}
+            placeholder="0"
+            className="form-input"
+          />
         </ModalField>
 
         <ModalField label="Tour image">
@@ -257,8 +334,10 @@ function TourModal({ initial, onCancel, onSave }) {
         </ModalField>
 
         <div style={{ marginTop: 24, display: "flex", justifyContent: "flex-end", gap: 8 }}>
-          <button type="button" onClick={onCancel} className="btn btn-outline btn-sm">Cancel</button>
-          <button type="submit" className="btn btn-warm btn-sm">{isEdit ? "Save changes" : "Add tour"}</button>
+          <button type="button" onClick={onCancel} className="btn btn-outline btn-sm" disabled={submitting}>Cancel</button>
+          <button type="submit" className="btn btn-warm btn-sm" disabled={submitting}>
+            {submitting ? "Saving..." : isEdit ? "Save changes" : "Add tour"}
+          </button>
         </div>
       </form>
     </div>

@@ -13,22 +13,53 @@ import GuideCard from "../../components/cards/GuideCard";
 import TourCard from "../../components/cards/TourCard";
 import ThingCard from "../../components/cards/ThingCard";
 
-import { getGuidesWithStatus } from "../../lib/adminStore";
 import { getAllTours } from "../../lib/tourStore";
-import { EXPERIENCES } from "../../data/experiences";
+import { getAllExperiences } from "../../lib/experienceStore";
+import { fetchGuidesWithStatus } from "../../lib/adminStore";
 import { TESTIMONIALS } from "../../data/testimonials";
 
 import heroPyramids from "../../assets/hero-pyramids.jpg";
 
 export default function Home() {
   const location = useLocation();
-  // Read fresh on every mount so tours a guide just added/edited on the Tour
-  // Management page show up here without needing a hard refresh.
-  const tours = getAllTours();
-  const guides = getGuidesWithStatus();
+  const [tours, setTours] = useState([]);
+  const [guides, setGuides] = useState([]);
+  const [experiences, setExperiences] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  // Lets the navbar (or any link) send someone to "/#some-section" from a
-  // different page — once Home has mounted, smooth-scroll to that section.
+  // Fetch all data from API
+  useEffect(() => {
+    const fetchAllData = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        // Fetch tours from API
+        const toursData = await getAllTours();
+        setTours(Array.isArray(toursData) ? toursData : []);
+        
+        // Fetch guides from API
+        const guidesData = await fetchGuidesWithStatus();
+        setGuides(Array.isArray(guidesData) ? guidesData : []);
+        
+        // Fetch experiences from API
+        const experiencesData = await getAllExperiences();
+        setExperiences(Array.isArray(experiencesData) ? experiencesData : []);
+      } catch (err) {
+        console.error("Error fetching data:", err);
+        setError(err.message || "Failed to load data");
+        setTours([]);
+        setGuides([]);
+        setExperiences([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchAllData();
+  }, []);
+
+  // Smooth scroll for hash links
   useEffect(() => {
     if (!location.hash) return;
     const id = location.hash.slice(1);
@@ -37,6 +68,31 @@ export default function Home() {
     }, 60);
     return () => clearTimeout(timer);
   }, [location.hash]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
+          <p className="text-muted-foreground">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center flex-col gap-4 p-4">
+        <p className="text-destructive">Error loading data: {error}</p>
+        <button 
+          onClick={() => window.location.reload()} 
+          className="btn btn-warm"
+        >
+          Retry
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -52,9 +108,24 @@ export default function Home() {
         actionTo="/guides"
       >
         <Rail>
-          {guides.map((g) => (
-            <GuideCard key={g.slug} {...g} />
-          ))}
+          {guides.length > 0 ? (
+            guides.slice(0, 6).map((g) => (
+              <GuideCard 
+                key={g.Guide_ID || g.slug} 
+                slug={g.Guide_ID || g.slug}
+                name={g.name || `${g.FName || ''} ${g.LName || ''}`.trim() || "Guide"}
+                photo={g.photo || g.Profile_Image}
+                city={g.city || g.Country || "Unknown"}
+                languages={g.languages || []}
+                rating={g.rating || 4.5}
+                reviews={g.reviews || 0}
+                specialty={g.specialty || g.specializations?.[0] || "Tour Guide"}
+                verified={g.verified || false}
+              />
+            ))
+          ) : (
+            <p className="text-muted-foreground">No guides available</p>
+          )}
         </Rail>
         <div className="mx-auto mt-10 flex max-w-7xl justify-center px-5 sm:px-8">
           <Link to="/guides" className="inline-flex">
@@ -75,9 +146,13 @@ export default function Home() {
         soft
       >
         <Rail>
-          {tours.map((t) => (
-            <TourCard key={t.slug} {...t} />
-          ))}
+          {tours.length > 0 ? (
+            tours.slice(0, 6).map((t) => (
+              <TourCard key={t.slug} {...t} />
+            ))
+          ) : (
+            <p className="text-muted-foreground">No tours available</p>
+          )}
         </Rail>
       </Section>
 
@@ -90,9 +165,21 @@ export default function Home() {
         actionTo="/experiences"
       >
         <Rail>
-          {EXPERIENCES.map((t) => (
-            <ThingCard key={t.slug} {...t} />
-          ))}
+          {experiences.length > 0 ? (
+            experiences.slice(0, 6).map((exp) => (
+              <ThingCard 
+                key={exp.Activity_ID || exp.slug} 
+                slug={exp.Activity_ID || exp.slug}
+                title={exp.Activity_name || exp.title}
+                image={exp.Image || exp.image || "/default-experience.jpg"}
+                tag={exp.Category || exp.tag || "Experience"}
+                price={exp.Price || exp.price || 0}
+                city={exp.City || exp.city || "Unknown"}
+              />
+            ))
+          ) : (
+            <p className="text-muted-foreground">No experiences available</p>
+          )}
         </Rail>
       </Section>
 
@@ -330,7 +417,7 @@ function AboutSection() {
               built around real human connection.
             </p>
             <div className="mt-6 flex flex-wrap gap-3">
-              <Button variant="hero" size="xl">Learn more about us</Button>
+              <Button variant="hero" size="xl">Learn about us</Button>
               <Link to="/register">
                 <Button variant="outline" size="xl">Become a guide</Button>
               </Link>

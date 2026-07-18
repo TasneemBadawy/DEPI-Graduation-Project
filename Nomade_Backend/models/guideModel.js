@@ -3,55 +3,15 @@ import db from "../config/database.js";
 // Find guide by email
 export const findGuideByEmail = (Email) => {
   return new Promise((resolve, reject) => {
-    const sql = `SELECT *FROM Tourguide WHERE Email = ?`;
-
-    db.query(sql, [Email], async (err, results) => {
-      if (err) return reject(err);
+    const sql = `SELECT * FROM Tourguide WHERE Email = ?`;
+    
+    db.query(sql, [Email], (err, results) => {
+      if (err) {
+        console.error("Error finding guide by email:", err);
+        return reject(err);
+      }
       if (results.length === 0) return resolve(null);
-
-      const guide = results[0];
-      const phoneSql = `SELECT Phone_Number FROM Guide_PhoneNumbers WHERE G_ID = ?`;
-      const phoneNumbers = await new Promise((resolvePhone, rejectPhone) => {
-        db.query(phoneSql, [guide.Guide_ID], (phoneErr, phoneResults) => {
-          if (phoneErr) rejectPhone(phoneErr);
-          else resolvePhone(phoneResults.map((p) => p.Phone_Number));
-        });
-      });
-
-      // Fetch specializations
-      const specSql = `SELECT Specialization FROM Guide_Specializations WHERE G_ID= ?`;
-      const specializations = await new Promise((resolveSpec, rejectSpec) => {
-        db.query(specSql, [guide.Guide_ID], (specErr, specResults) => {
-          if (specErr) rejectSpec(specErr);
-          else resolveSpec(specResults.map((s) => s.Specialization));
-        });
-      });
-
-      // Fetch certificates
-      const certSql = `SELECT Certificate FROM Guide_Certificates WHERE G_ID = ?`;
-      const certificates = await new Promise((resolveCert, rejectCert) => {
-        db.query(certSql, [guide.Guide_ID], (certErr, certResults) => {
-          if (certErr) rejectCert(certErr);
-          else resolveCert(certResults.map((c) => c.Certificate));
-        });
-      });
-
-      // Fetch languages
-      const langSql = `SELECT Language FROM Guide_Languages WHERE G_ID = ?`;
-      const languages = await new Promise((resolveLang, rejectLang) => {
-        db.query(langSql, [guide.Guide_ID], (langErr, langResults) => {
-          if (langErr) rejectLang(langErr);
-          else resolveLang(langResults.map((l) => l.Language));
-        });
-      });
-
-      resolve({
-        ...guide,
-        phoneNumbers,
-        specializations,
-        certificates,
-        languages,
-      });
+      resolve(results[0]);
     });
   });
 };
@@ -75,83 +35,157 @@ export const createGuide = async (
 ) => {
   return new Promise(async (resolve, reject) => {
     try {
-      // Insert guide
+      console.log("Creating guide with data:", {
+        FName,
+        LName,
+        Email,
+        Country,
+        About,
+        Profile_Image
+      });
+
+      // Check if Tourguide table exists and has correct columns
+      const checkTableSql = `SHOW COLUMNS FROM Tourguide`;
+      db.query(checkTableSql, (checkErr, columns) => {
+        if (checkErr) {
+          console.error("Error checking Tourguide table:", checkErr);
+          return reject(new Error("Tourguide table doesn't exist or cannot be accessed"));
+        }
+        
+        const columnNames = columns.map(c => c.Field);
+        console.log("Tourguide columns:", columnNames);
+        
+        // Check if Profile_Image column exists
+        if (!columnNames.includes('Profile_Image')) {
+          console.warn("Profile_Image column not found in Tourguide table");
+        }
+      });
+
+      // Insert guide - use correct column names
       const guideSql = `
-        INSERT INTO Tourguide (FName, LName, Email, Password, Country, About, FaceBook, Linkedin, Instagram , Profile_Image)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?,?)
+        INSERT INTO Tourguide 
+        (FName, LName, Email, Password, Country, About, FaceBook, Linkedin, Instagram${Profile_Image ? ', Profile_Image' : ''})
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?${Profile_Image ? ', ?' : ''})
       `;
 
-      db.query(
-        guideSql,
-        [
-          FName,
-          LName,
-          Email,
-          Password,
-          Country,
-          About,
-          FaceBook,
-          Linkedin,
-          Instagram,
-          Profile_Image
-        ],
-        async (err, result) => {
-          if (err) return reject(err);
+      const params = [
+        FName,
+        LName,
+        Email,
+        Password,
+        Country || null,
+        About || null,
+        FaceBook || null,
+        Linkedin || null,
+        Instagram || null,
+      ];
+      
+      if (Profile_Image) {
+        params.push(Profile_Image);
+      }
 
-          const guideId = result.insertId;
+      console.log("SQL:", guideSql);
+      console.log("Params:", params);
 
+      db.query(guideSql, params, async (err, result) => {
+        if (err) {
+          console.error("Error inserting guide:", err);
+          console.error("SQL Error:", err.sqlMessage);
+          return reject(err);
+        }
+
+        const guideId = result.insertId;
+        console.log(`Guide created with ID: ${guideId}`);
+
+        // Insert related data (with error handling for each)
+        try {
           // Insert phone numbers
           if (phoneNumbers && phoneNumbers.length > 0) {
             const phoneSql = `INSERT INTO Guide_PhoneNumbers (G_ID, Phone_Number) VALUES ?`;
             const phoneValues = phoneNumbers.map((phone) => [guideId, phone]);
             await new Promise((resolvePhone, rejectPhone) => {
               db.query(phoneSql, [phoneValues], (phoneErr) => {
-                if (phoneErr) rejectPhone(phoneErr);
-                else resolvePhone();
+                if (phoneErr) {
+                  console.warn("Phone numbers insertion failed:", phoneErr.message);
+                  resolvePhone(); // Don't fail the whole operation
+                } else {
+                  console.log(`Inserted ${phoneNumbers.length} phone numbers`);
+                  resolvePhone();
+                }
               });
             });
           }
+        } catch (err) {
+          console.warn("Error with phone numbers:", err.message);
+        }
 
+        try {
           // Insert specializations
           if (specializations && specializations.length > 0) {
             const specSql = `INSERT INTO Guide_Specializations (G_ID, Specialization) VALUES ?`;
             const specValues = specializations.map((spec) => [guideId, spec]);
             await new Promise((resolveSpec, rejectSpec) => {
               db.query(specSql, [specValues], (specErr) => {
-                if (specErr) rejectSpec(specErr);
-                else resolveSpec();
+                if (specErr) {
+                  console.warn("Specializations insertion failed:", specErr.message);
+                  resolveSpec();
+                } else {
+                  console.log(`Inserted ${specializations.length} specializations`);
+                  resolveSpec();
+                }
               });
             });
           }
+        } catch (err) {
+          console.warn("Error with specializations:", err.message);
+        }
 
+        try {
           // Insert certificates
           if (certificates && certificates.length > 0) {
             const certSql = `INSERT INTO Guide_Certificates (G_ID, Certificate) VALUES ?`;
             const certValues = certificates.map((cert) => [guideId, cert]);
             await new Promise((resolveCert, rejectCert) => {
               db.query(certSql, [certValues], (certErr) => {
-                if (certErr) rejectCert(certErr);
-                else resolveCert();
+                if (certErr) {
+                  console.warn("Certificates insertion failed:", certErr.message);
+                  resolveCert();
+                } else {
+                  console.log(`Inserted ${certificates.length} certificates`);
+                  resolveCert();
+                }
               });
             });
           }
+        } catch (err) {
+          console.warn("Error with certificates:", err.message);
+        }
 
+        try {
           // Insert languages
           if (languages && languages.length > 0) {
             const langSql = `INSERT INTO Guide_Languages (G_ID, Language) VALUES ?`;
             const langValues = languages.map((lang) => [guideId, lang]);
             await new Promise((resolveLang, rejectLang) => {
               db.query(langSql, [langValues], (langErr) => {
-                if (langErr) rejectLang(langErr);
-                else resolveLang();
+                if (langErr) {
+                  console.warn("Languages insertion failed:", langErr.message);
+                  resolveLang();
+                } else {
+                  console.log(`Inserted ${languages.length} languages`);
+                  resolveLang();
+                }
               });
             });
           }
+        } catch (err) {
+          console.warn("Error with languages:", err.message);
+        }
 
-          resolve({ guideId, inserted: true });
-        },
-      );
+        resolve({ guideId, inserted: true });
+      });
     } catch (err) {
+      console.error("Error in createGuide:", err);
       reject(err);
     }
   });
@@ -160,16 +194,13 @@ export const createGuide = async (
 // Get all guides
 export const getAllGuides = () => {
   return new Promise((resolve, reject) => {
-    const sql = `SELECT *FROM Tourguide `;
+    const sql = `SELECT * FROM Tourguide`;
 
     db.query(sql, async (err, guides) => {
       if (err) return reject(err);
 
-      // Fetch related data for each guide
       const guidesWithDetails = await Promise.all(
         guides.map(async (guide) => {
-          // we don't need to send Password to front so we delete it (it is safe and will not affect on data)
-          delete guides.Password;
           return await getGuideCompleteProfile(guide.Guide_ID);
         }),
       );
@@ -189,8 +220,8 @@ export const getGuideCompleteProfile = (guideId) => {
       if (results.length === 0) return resolve(null);
 
       const guide = results[0];
-      // we don't need to send Password to front so we delete it (it is safe and will not affect on data)
       delete guide.Password;
+      
       // Fetch phone numbers
       const phoneSql = `SELECT Phone_Number FROM Guide_PhoneNumbers WHERE G_ID = ?`;
       const phoneNumbers = await new Promise((resolvePhone, rejectPhone) => {
@@ -282,7 +313,6 @@ export const updateGuideProfile = (guideId, updateData) => {
 // Update guide phone numbers (replace all)
 export const updateGuidePhoneNumbers = (guideId, phoneNumbers) => {
   return new Promise((resolve, reject) => {
-    // First delete existing
     const deleteSql = `DELETE FROM Guide_PhoneNumbers WHERE G_ID = ?`;
 
     db.query(deleteSql, [guideId], (deleteErr) => {
@@ -292,7 +322,6 @@ export const updateGuidePhoneNumbers = (guideId, phoneNumbers) => {
         return resolve({ deleted: true, inserted: 0 });
       }
 
-      // Insert new numbers
       const insertSql = `INSERT INTO Guide_PhoneNumbers (G_ID, Phone_Number) VALUES ?`;
       const values = phoneNumbers.map((phone) => [guideId, phone]);
 

@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { Search } from "lucide-react";
 import TourCard from "../../components/cards/TourCard";
 import Footer from "../../components/Footer";
@@ -6,13 +6,38 @@ import { getAllTours } from "../../lib/tourStore";
 
 export default function Tours() {
   const [query, setQuery] = useState("");
-  const allTours = useMemo(() => getAllTours(), []);
+  const [allTours, setAllTours] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const loadTours = async () => {
+      setLoading(true);
+      try {
+        const tours = await getAllTours();
+        setAllTours(tours);
+      } catch (error) {
+        console.error("Error loading tours:", error);
+        setAllTours([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadTours();
+  }, []);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return allTours;
     return allTours.filter((t) => [t.title, t.city].join(" ").toLowerCase().includes(q));
   }, [query, allTours]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <p className="text-muted-foreground">Loading tours...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">

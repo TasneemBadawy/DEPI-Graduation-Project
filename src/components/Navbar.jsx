@@ -1,126 +1,132 @@
-import { useEffect, useState } from "react";
-import { cn } from "../lib/utils";
-import { Compass } from "lucide-react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
-
-// Every link here targets a section on the homepage, not a separate route.
-// Dedicated listing pages (/guides, /tours, /experiences) are still reachable
-// from buttons within those homepage sections ("View all guides", etc.).
-const NAV_LINKS = [
-  { label: "Guides", sectionId: "top-guides" },
-  { label: "Tours", sectionId: "popular-tours" },
-  { label: "Activities", sectionId: "things-to-do" },
-  { label: "Testimonials", sectionId: "testimonials" },
-  { label: "About", sectionId: "about" },
-];
-
-// Pages that show only the logo + wordmark, with no nav links or auth
-// buttons — auth pages, individual guide profiles, and dashboards (which
-// render their own internal nav via components/ui/Navbar.jsx).
-function isMinimalPath(pathname) {
-  if (pathname === "/login" || pathname === "/register") return true;
-  if (pathname.startsWith("/guides/") && pathname !== "/guides/") return true; // individual guide profile
-  if (pathname.startsWith("/dashboard")) return true; // dashboards have their own header
-  return false;
-}
+import { Link, useNavigate } from "react-router-dom";
+import { Menu, X, MapPin } from "lucide-react";
+import { useState, useEffect } from "react";
+import { getCurrentUser, logout } from "../lib/auth";
+import Avatar from "./ui/Avatar";
 
 export default function Navbar() {
-  const location = useLocation();
+  const [isOpen, setIsOpen] = useState(false);
+  const [user, setUser] = useState(null);
   const navigate = useNavigate();
-  const { pathname } = location;
-
-  const isHome = pathname === "/";
-  const minimal = isMinimalPath(pathname);
-
-  // On the homepage the bar starts transparent over the hero image, then
-  // turns solid once you've scrolled past it — it's sticky the whole time.
-  const [scrolled, setScrolled] = useState(!isHome);
 
   useEffect(() => {
-    if (!isHome) {
-      setScrolled(true);
-      return;
-    }
-    const onScroll = () => setScrolled(window.scrollY > 80);
-    onScroll();
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
-  }, [isHome]);
+    setUser(getCurrentUser());
+    // Listen for storage changes (login/logout in other tabs)
+    const handleStorage = () => setUser(getCurrentUser());
+    window.addEventListener("storage", handleStorage);
+    return () => window.removeEventListener("storage", handleStorage);
+  }, []);
 
-  const transparent = isHome && !scrolled;
-
-  const handleNavClick = (e, sectionId) => {
-    e.preventDefault();
-    if (pathname === "/") {
-      document.getElementById(sectionId)?.scrollIntoView({ behavior: "smooth" });
-    } else {
-      navigate(`/#${sectionId}`);
-    }
+  const handleLogout = () => {
+    logout();
+    setUser(null);
+    navigate("/");
   };
 
   return (
-    <nav
-      className={cn(
-        "sticky top-0 z-50 flex h-16 w-full items-center justify-between px-6 transition-colors duration-300 sm:px-12",
-        transparent ? "bg-transparent text-white" : "border-b border-border bg-card/95 text-foreground backdrop-blur-sm"
-      )}
-    >
-      {/* Logo — always present */}
-      <Link to="/" className="flex items-center gap-2.5">
-        <div
-          className={cn(
-            "flex h-9 w-9 items-center justify-center rounded-full border backdrop-blur-sm",
-            transparent ? "border-white/20 bg-black/10" : "border-border bg-primary-soft"
-          )}
-        >
-          <Compass className={cn("h-[18px] w-[18px]", transparent ? "text-black" : "text-primary")} />
+    <nav className="border-b border-border bg-card/95 backdrop-blur-md sticky top-0 z-50">
+      <div className="mx-auto max-w-7xl px-5 sm:px-8">
+        <div className="flex h-16 items-center justify-between">
+          {/* Logo */}
+          <Link to="/" className="flex items-center gap-2 text-xl font-bold text-foreground">
+            <MapPin className="h-6 w-6 text-primary" />
+            <span>Nomade</span>
+          </Link>
+
+          {/* Desktop Navigation */}
+          <div className="hidden items-center gap-6 md:flex">
+            <Link to="/guides" className="text-sm font-medium text-muted-foreground hover:text-foreground">
+              Guides
+            </Link>
+            <Link to="/tours" className="text-sm font-medium text-muted-foreground hover:text-foreground">
+              Tours
+            </Link>
+            <Link to="/experiences" className="text-sm font-medium text-muted-foreground hover:text-foreground">
+              Experiences
+            </Link>
+
+            {user ? (
+              <div className="flex items-center gap-4">
+                <Link 
+                  to={user.role === "guide" ? "/dashboard/guide" : "/dashboard/tourist"}
+                  className="flex items-center gap-2 rounded-full bg-primary-soft px-3 py-1.5 text-sm font-medium text-primary hover:brightness-95"
+                >
+                  <Avatar src={user.profileImage} name={user.name} size="sm" />
+                  Dashboard
+                </Link>
+                <button
+                  onClick={handleLogout}
+                  className="text-sm font-medium text-muted-foreground hover:text-destructive"
+                >
+                  Logout
+                </button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-3">
+                <Link to="/login" className="text-sm font-medium text-muted-foreground hover:text-foreground">
+                  Sign in
+                </Link>
+                <Link to="/register" className="btn btn-warm btn-sm">
+                  Get started
+                </Link>
+              </div>
+            )}
+          </div>
+
+          {/* Mobile menu button */}
+          <button
+            onClick={() => setIsOpen(!isOpen)}
+            className="rounded-lg p-2 text-muted-foreground hover:bg-muted md:hidden"
+          >
+            {isOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+          </button>
         </div>
-        <span className={cn("text-xl font-bold tracking-tight", transparent ? "text-black" : "text-foreground")}>
-          Nomade
-        </span>
-      </Link>
 
-      {!minimal && (
-        <>
-          {/* Middle nav links — smooth-scroll to homepage sections */}
-          <div className="hidden items-center gap-1 md:flex">
-            {NAV_LINKS.map((item) => (
-              <a
-                key={item.label}
-                href={`/#${item.sectionId}`}
-                onClick={(e) => handleNavClick(e, item.sectionId)}
-                className={cn(
-                  "rounded-xl px-4 py-2 text-sm font-medium transition-all",
-                  transparent
-                    ? "text-black/90 hover:bg-black/10 hover:text-black"
-                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                )}
-              >
-                {item.label}
-              </a>
-            ))}
-          </div>
+        {/* Mobile Navigation */}
+        {isOpen && (
+          <div className="border-t border-border py-4 md:hidden">
+            <div className="flex flex-col gap-3">
+              <Link to="/guides" className="text-sm font-medium text-muted-foreground hover:text-foreground" onClick={() => setIsOpen(false)}>
+                Guides
+              </Link>
+              <Link to="/tours" className="text-sm font-medium text-muted-foreground hover:text-foreground" onClick={() => setIsOpen(false)}>
+                Tours
+              </Link>
+              <Link to="/experiences" className="text-sm font-medium text-muted-foreground hover:text-foreground" onClick={() => setIsOpen(false)}>
+                Experiences
+              </Link>
 
-          {/* Auth buttons */}
-          <div className="flex items-center gap-6">
-            <Link
-              to="/login"
-              className={cn(
-                "text-sm font-semibold transition-all",
-                transparent ? "text-black/90 hover:text-black" : "text-foreground hover:text-primary"
+              {user ? (
+                <>
+                  <Link 
+                    to={user.role === "guide" ? "/dashboard/guide" : "/dashboard/tourist"}
+                    className="flex items-center gap-2 rounded-lg bg-primary-soft px-3 py-2 text-sm font-medium text-primary"
+                    onClick={() => setIsOpen(false)}
+                  >
+                    <Avatar src={user.profileImage} name={user.name} size="sm" />
+                    Dashboard
+                  </Link>
+                  <button
+                    onClick={() => { handleLogout(); setIsOpen(false); }}
+                    className="text-left text-sm font-medium text-destructive"
+                  >
+                    Logout
+                  </button>
+                </>
+              ) : (
+                <>
+                  <Link to="/login" className="text-sm font-medium text-muted-foreground hover:text-foreground" onClick={() => setIsOpen(false)}>
+                    Sign in
+                  </Link>
+                  <Link to="/register" className="btn btn-warm btn-sm text-center" onClick={() => setIsOpen(false)}>
+                    Get started
+                  </Link>
+                </>
               )}
-            >
-              Log in
-            </Link>
-            <Link
-              to="/register"
-              className="rounded-xl bg-primary px-5 py-2.5 text-sm font-bold text-white shadow-lg transition-all duration-150 hover:brightness-110 active:scale-[0.98]"
-            >
-              Join Nomade
-            </Link>
+            </div>
           </div>
-        </>
-      )}
+        )}
+      </div>
     </nav>
   );
 }
