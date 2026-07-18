@@ -417,7 +417,7 @@ function AboutSection() {
               built around real human connection.
             </p>
             <div className="mt-6 flex flex-wrap gap-3">
-              <Button variant="hero" size="xl">Learn more about us</Button>
+              <Button variant="hero" size="xl">Learn about us</Button>
               <Link to="/register">
                 <Button variant="outline" size="xl">Become a guide</Button>
               </Link>

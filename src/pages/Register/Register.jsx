@@ -9,7 +9,6 @@ import { InstagramIcon, FacebookIcon, LinkedinIcon } from "../../components/icon
 import AuthLayout from "../../components/auth/AuthLayout";
 import RoleSelector from "../../components/auth/RoleSelector";
 import AuthTabs from "../../components/auth/AuthTabs";
-import { SocialRow } from "../../components/AuthComponents";
 import { cn } from "../../lib/utils";
 import { useAuth } from "../../context/AuthContext";
 
@@ -316,8 +315,6 @@ function TouristRegisterForm() {
           </>
         )}
       </button>
-
-      <SocialRow redirectTo="/register" />
 
       <p className="mt-6 text-center text-sm text-muted-foreground">
         Already have an account?{" "}

@@ -213,8 +213,20 @@ export default function GuideProfile() {
 
           <aside className="h-fit space-y-4 lg:sticky lg:top-20">
             <div className="rounded-2xl border border-border bg-card p-5 shadow-card">
-              <Button variant="hero" size="xl" className="mt-4 w-full">Request booking</Button>
-              <p className="mt-3 text-xs text-muted-foreground">You won't be charged yet.</p>
+            <Button 
+  variant="hero" 
+  size="xl" 
+  className="mt-4 w-full"
+  onClick={() => {
+    if (!currentUser) {
+      navigate("/login", { state: { from: `/booking/${guide.Guide_ID}` } });
+      return;
+    }
+    navigate(`/booking/${guide.Guide_ID}`);
+  }}
+>
+  Request booking
+</Button>              <p className="mt-3 text-xs text-muted-foreground">You won't be charged yet.</p>
               <ul className="mt-4 space-y-2 border-t border-border pt-4 text-xs text-muted-foreground">
                 <li className="flex items-center gap-1.5"><ShieldCheck className="h-3.5 w-3.5 text-secondary" /> Free cancellation up to 48h</li>
                 <li className="flex items-center gap-1.5"><ShieldCheck className="h-3.5 w-3.5 text-secondary" /> Verified by Nomade</li>

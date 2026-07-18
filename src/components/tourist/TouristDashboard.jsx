@@ -9,43 +9,67 @@ import StatusPill from "../ui/StatusPill";
 import Navbar from "../ui/Navbar";
 import { getSavedTours, removeSavedTour } from "../../lib/savedTours";
 import { getSavedActivities, removeSavedActivity } from "../../lib/savedActivities";
+import { getUserBookings, cancelBooking } from "../../lib/bookingStore";
 
-/* ── Types ── */
-
-/* ── Seed data (mirrors design) ── */
-const BOOKINGS = [
-  { id: "b1", title: "Pyramids of Giza & Sphinx — Private Half Day", guide: { name: "Yara Adel", rating: 4.92 }, city: "Giza, Egypt", date: "May 12, 2026 · 08:30", duration: "4h", travelers: 2, price: 240, status: "Confirmed" },
-  { id: "b2", title: "Felucca Sunset on the Nile", guide: { name: "Mahmoud Said", rating: 4.88 }, city: "Cairo, Egypt", date: "May 14, 2026 · 17:30", duration: "2h", travelers: 2, price: 90, status: "Pending Guide" },
-  { id: "b3", title: "Valley of the Kings & Karnak", guide: { name: "Nadia El-Sayed", rating: 4.95 }, city: "Luxor, Egypt", date: "May 16, 2026 · 06:00", duration: "Full day", travelers: 2, price: 320, status: "Confirmed" },
-  { id: "b4", title: "Red Sea Snorkeling Adventure", guide: { name: "Omar Hassan", rating: 4.9 }, city: "Hurghada, Egypt", date: "Apr 22, 2026", duration: "5h", travelers: 2, price: 180, status: "Completed" },
-];
-
+/* ── Constants ── */
 const TABS = ["All", "Confirmed", "Pending Guide", "Completed"];
 
 const ITINERARY = [
-  { day: "Day 1", title: "Arrival & rest",         time: "—",     tone: "muted"     },
-  { day: "Day 2", title: "Pyramids of Giza tour",  time: "08:30", tone: "primary"   },
-  { day: "Day 3", title: "Khan el-Khalili Bazaar", time: "Free",  tone: "muted"     },
+  { day: "Day 1", title: "Arrival & rest", time: "—", tone: "muted" },
+  { day: "Day 2", title: "Pyramids of Giza tour", time: "08:30", tone: "primary" },
+  { day: "Day 3", title: "Khan el-Khalili Bazaar", time: "Free", tone: "muted" },
   { day: "Day 4", title: "Felucca Sunset on Nile", time: "17:30", tone: "secondary" },
-  { day: "Day 5", title: "Fly to Luxor",           time: "06:00", tone: "muted"     },
-  { day: "Day 6", title: "Karnak & Valley of Kings",time:"06:00", tone: "primary"   },
-  { day: "Day 7", title: "Departure",              time: "—",     tone: "muted"     },
+  { day: "Day 5", title: "Fly to Luxor", time: "06:00", tone: "muted" },
+  { day: "Day 6", title: "Karnak & Valley of Kings", time: "06:00", tone: "primary" },
+  { day: "Day 7", title: "Departure", time: "—", tone: "muted" },
 ];
 
 function dayBoxStyle(tone) {
-  if (tone === "primary")   return { background: "oklch(0.62 0.18 42 / 0.1)",  color: "var(--primary)"  };
+  if (tone === "primary") return { background: "oklch(0.62 0.18 42 / 0.1)", color: "var(--primary)" };
   if (tone === "secondary") return { background: "oklch(0.52 0.12 175 / 0.15)", color: "oklch(0.52 0.12 175)" };
   return { background: "var(--muted)", color: "var(--muted-foreground)" };
 }
 
-/* ── Component ── */
+function getInitials(name) {
+  if (!name) return "U";
+  return name.split(" ").map((p) => p[0]).join("").toUpperCase().slice(0, 2);
+}
 
+/* ── Component ── */
 export default function TouristDashboard({ user }) {
   const [tab, setTab] = useState("All");
-  const [bookings, setBookings] = useState(BOOKINGS);
+  const [bookings, setBookings] = useState([]);
+  const [bookingsLoading, setBookingsLoading] = useState(true);
   const [saved, setSaved] = useState([]);
   const [savedActivities, setSavedActivities] = useState([]);
 
+  const userId = user?.id || user?.User_ID;
+  const userName = user?.name || "Traveler";
+
+  // Load bookings from localStorage
+  useEffect(() => {
+    const loadBookings = () => {
+      if (!userId) {
+        setBookingsLoading(false);
+        return;
+      }
+      const userBookings = getUserBookings(userId);
+      setBookings(userBookings);
+      setBookingsLoading(false);
+    };
+    loadBookings();
+
+    // Listen for storage changes (bookings from other tabs)
+    const handleStorage = () => {
+      if (userId) {
+        setBookings(getUserBookings(userId));
+      }
+    };
+    window.addEventListener("storage", handleStorage);
+    return () => window.removeEventListener("storage", handleStorage);
+  }, [userId]);
+
+  // Load saved items
   useEffect(() => {
     setSaved(getSavedTours());
     setSavedActivities(getSavedActivities());
@@ -53,7 +77,10 @@ export default function TouristDashboard({ user }) {
 
   const handleCancel = (id) => {
     if (!window.confirm("Cancel this booking? This can't be undone.")) return;
-    setBookings((prev) => prev.filter((b) => b.id !== id));
+    cancelBooking(id);
+    if (userId) {
+      setBookings(getUserBookings(userId));
+    }
   };
 
   const handleRemoveSaved = (slug) => {
@@ -71,7 +98,19 @@ export default function TouristDashboard({ user }) {
     [tab, bookings],
   );
 
-  const next = bookings.find((b) => b.status === "Confirmed");
+  const next = bookings.find((b) => b.status === "Confirmed" || b.status === "Pending Guide");
+
+  // Show loading state
+  if (bookingsLoading) {
+    return (
+      <div style={{ minHeight: "100vh", background: "var(--background)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <div className="flex flex-col items-center gap-4">
+          <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
+          <p style={{ color: "var(--muted-foreground)" }}>Loading your trips...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div style={{ minHeight: "100vh", background: "var(--background)" }}>
@@ -82,20 +121,24 @@ export default function TouristDashboard({ user }) {
         {/* Greeting */}
         <section style={{ marginBottom: 32, display: "flex", flexWrap: "wrap", alignItems: "flex-end", justifyContent: "space-between", gap: 16 }}>
           <div>
-            <p style={{ fontSize: 11, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.08em", color: "oklch(0.52 0.12 175)", margin: 0 }}>My Trips</p>
+            <p style={{ fontSize: 11, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.08em", color: "oklch(0.52 0.12 175)", margin: 0 }}>
+              My Trips
+            </p>
             <h1 style={{ marginTop: 4, fontSize: 32, fontWeight: 600, letterSpacing: "-0.5px", margin: "4px 0 6px" }}>
-              Welcome back, {user.name.split(" ")[0]}
+              Welcome back, {userName.split(" ")[0]}
             </h1>
             <p style={{ fontSize: 14, color: "var(--muted-foreground)", margin: 0 }}>
-              Your next adventure starts in <strong style={{ color: "var(--foreground)" }}>13 days</strong>.
+              {bookings.length > 0 
+                ? `You have ${bookings.length} booking${bookings.length > 1 ? 's' : ''} on your itinerary.`
+                : "Start planning your next adventure today!"}
             </p>
           </div>
           <Link 
-            to="/tours/cairo-historical-trip" /* هنا بتكتبي الـ slug بتاع الرحلة اللي عايزة تروحي ليها */
+            to="/tours"
             className="btn btn-warm" 
             style={{ display: "inline-flex", alignItems: "center", gap: 6, textDecoration: "none" }}
           >
-            <Plus size={30} /> Book new tour
+            <Plus size={20} /> Book new tour
           </Link>
         </section>
 
@@ -120,21 +163,23 @@ export default function TouristDashboard({ user }) {
                 <div>
                   <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                     <StatusPill status={next.status} />
-                    <span style={{ fontSize: 12, color: "var(--muted-foreground)" }}>Booking #NMD-{next.id.toUpperCase()}</span>
+                    <span style={{ fontSize: 12, color: "var(--muted-foreground)" }}>Booking #NMD-{next.id?.toUpperCase?.() || next.id}</span>
                   </div>
-                  <h2 style={{ marginTop: 12, fontSize: 22, fontWeight: 600, letterSpacing: "-0.3px", margin: "12px 0 8px" }}>{next.title}</h2>
+                  <h2 style={{ marginTop: 12, fontSize: 22, fontWeight: 600, letterSpacing: "-0.3px", margin: "12px 0 8px" }}>{next.tourTitle || next.title}</h2>
                   <div style={{ display: "flex", flexWrap: "wrap", gap: "4px 16px", fontSize: 13, color: "var(--muted-foreground)" }}>
                     <span style={{ display: "flex", alignItems: "center", gap: 5 }}><MapPin size={15} />{next.city}</span>
                     <span style={{ display: "flex", alignItems: "center", gap: 5 }}><CalendarIcon size={15} />{next.date}</span>
-                    <span style={{ display: "flex", alignItems: "center", gap: 5 }}><Clock size={15} />{next.duration}</span>
+                    <span style={{ display: "flex", alignItems: "center", gap: 5 }}><Clock size={15} />{next.duration || "Half day"}</span>
                   </div>
                   <div style={{ marginTop: 20, display: "flex", alignItems: "center", gap: 12, borderRadius: 14, background: "var(--muted)", padding: 12 }}>
-                    <div className="avatar avatar-secondary" style={{ width: 40, height: 40 }}>YA</div>
+                    <div className="avatar avatar-secondary" style={{ width: 40, height: 40, display: "flex", alignItems: "center", justifyContent: "center", borderRadius: "50%", background: "var(--secondary-soft)", color: "var(--secondary)", fontWeight: 600, fontSize: 14 }}>
+                      {getInitials(next.guideName || "Guide")}
+                    </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <p style={{ fontSize: 13, fontWeight: 500, margin: 0 }}>Guided by {next.guide.name}</p>
+                      <p style={{ fontSize: 13, fontWeight: 500, margin: 0 }}>Guided by {next.guideName || "Guide"}</p>
                       <p style={{ fontSize: 12, color: "var(--muted-foreground)", display: "flex", alignItems: "center", gap: 4, margin: 0 }}>
                         <Star size={11} style={{ fill: "var(--primary)", color: "var(--primary)" }} />
-                        {next.guide.rating} · Verified guide
+                        {next.guideRating || 4.5} · Verified guide
                       </p>
                     </div>
                   </div>
@@ -142,7 +187,11 @@ export default function TouristDashboard({ user }) {
                 <div style={{ marginTop: 20, display: "flex", flexWrap: "wrap", gap: 8 }}>
                   <button className="btn btn-outline btn-sm">View tickets</button>
                   <button className="btn btn-outline btn-sm">Reschedule</button>
-                  <button className="btn btn-ghost btn-sm" style={{ color: "var(--destructive)" }} onClick={() => handleCancel(next.id)}>Cancel</button>
+                  {next.status !== "Completed" && (
+                    <button className="btn btn-ghost btn-sm" style={{ color: "var(--destructive)" }} onClick={() => handleCancel(next.id)}>
+                      Cancel
+                    </button>
+                  )}
                 </div>
               </div>
             </div>
@@ -174,42 +223,59 @@ export default function TouristDashboard({ user }) {
               </div>
             </div>
             <ul style={{ listStyle: "none", padding: 0, margin: 0 }} className="divide-y">
-              {filtered.map((b) => (
-                <li key={b.id} style={{ display: "flex", flexWrap: "wrap", alignItems: "flex-start", gap: 16, padding: "20px 24px" }}>
-                  <div style={{ width: 112, height: 80, borderRadius: 12, background: "oklch(0.92 0.04 155)", flexShrink: 0 }} />
-                  <div style={{ minWidth: 0, flex: 1 }}>
-                    <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8 }}>
-                      <StatusPill status={b.status} />
-                      <span style={{ fontSize: 12, color: "var(--muted-foreground)" }}>{b.city}</span>
-                    </div>
-                    <p style={{ marginTop: 4, fontSize: 14, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", margin: "4px 0 4px" }}>{b.title}</p>
-                    <div style={{ display: "flex", flexWrap: "wrap", gap: "2px 16px", fontSize: 12, color: "var(--muted-foreground)" }}>
-                      <span style={{ display: "flex", alignItems: "center", gap: 4 }}><CalendarIcon size={12} />{b.date}</span>
-                      <span style={{ display: "flex", alignItems: "center", gap: 4 }}><Clock size={12} />{b.duration}</span>
-                      <span style={{ display: "flex", alignItems: "center", gap: 4 }}><Users size={12} />{b.travelers}</span>
-                      <span style={{ fontWeight: 500, color: "var(--foreground)" }}>${b.price}</span>
-                    </div>
-                    <p style={{ marginTop: 4, fontSize: 12, color: "var(--muted-foreground)", margin: "4px 0 0" }}>Guide · {b.guide.name}</p>
-                  </div>
-                  <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 8, flexShrink: 0 }}>
-                    {b.status !== "Completed" ? (
-                      <button
-                        className="btn btn-ghost btn-sm"
-                        style={{ color: "var(--destructive)", display: "flex", alignItems: "center", gap: 4 }}
-                        onClick={() => handleCancel(b.id)}
-                      >
-                        <X size={14} /> Cancel booking
-                      </button>
-                    ) : (
-                      <button className="btn btn-outline btn-sm">Leave review</button>
-                    )}
-                  </div>
-                </li>
-              ))}
-              {filtered.length === 0 && (
+              {filtered.length === 0 ? (
                 <li style={{ padding: "48px 24px", textAlign: "center", fontSize: 13, color: "var(--muted-foreground)" }}>
                   No bookings in this category yet.
                 </li>
+              ) : (
+                filtered.map((b) => (
+                  <li key={b.id} style={{ display: "flex", flexWrap: "wrap", alignItems: "flex-start", gap: 16, padding: "20px 24px" }}>
+                    <div style={{ width: 112, height: 80, borderRadius: 12, background: "oklch(0.92 0.04 155)", flexShrink: 0 }} />
+                    <div style={{ minWidth: 0, flex: 1 }}>
+                      <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8 }}>
+                        <StatusPill status={b.status} />
+                        <span style={{ fontSize: 12, color: "var(--muted-foreground)" }}>{b.city}</span>
+                      </div>
+                      <p style={{ marginTop: 4, fontSize: 14, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", margin: "4px 0 4px" }}>
+                        {b.tourTitle || b.title}
+                      </p>
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: "2px 16px", fontSize: 12, color: "var(--muted-foreground)" }}>
+                        <span style={{ display: "flex", alignItems: "center", gap: 4 }}><CalendarIcon size={12} />{b.date}</span>
+                        <span style={{ display: "flex", alignItems: "center", gap: 4 }}><Clock size={12} />{b.duration || "Half day"}</span>
+                        <span style={{ display: "flex", alignItems: "center", gap: 4 }}><Users size={12} />{b.travelers || 1}</span>
+                        <span style={{ fontWeight: 500, color: "var(--foreground)" }}>${b.totalPrice || b.price || 0}</span>
+                      </div>
+                      <p style={{ marginTop: 4, fontSize: 12, color: "var(--muted-foreground)", margin: "4px 0 0" }}>
+                        Guide · {b.guideName || "Guide"}
+                      </p>
+                      {b.paymentMethod && (
+                        <p style={{ fontSize: 11, color: "var(--muted-foreground)", margin: "2px 0 0" }}>
+                          Payment: {b.paymentMethod}
+                        </p>
+                      )}
+                      {b.note && (
+                        <p style={{ fontSize: 11, color: "var(--muted-foreground)", margin: "2px 0 0", fontStyle: "italic" }}>
+                          Note: "{b.note}"
+                        </p>
+                      )}
+                    </div>
+                    <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 8, flexShrink: 0 }}>
+                      {b.status !== "Completed" && b.status !== "Declined" ? (
+                        <button
+                          className="btn btn-ghost btn-sm"
+                          style={{ color: "var(--destructive)", display: "flex", alignItems: "center", gap: 4 }}
+                          onClick={() => handleCancel(b.id)}
+                        >
+                          <X size={14} /> Cancel booking
+                        </button>
+                      ) : b.status === "Completed" ? (
+                        <button className="btn btn-outline btn-sm">Leave review</button>
+                      ) : b.status === "Declined" && (
+                        <span style={{ fontSize: 12, color: "var(--destructive)", fontWeight: 500 }}>Declined</span>
+                      )}
+                    </div>
+                  </li>
+                ))
               )}
             </ul>
           </div>
@@ -229,8 +295,8 @@ export default function TouristDashboard({ user }) {
                 {ITINERARY.map((item, i) => (
                   <li key={i}
                     style={{ display: "flex", alignItems: "center", gap: 8, borderRadius: 12, padding: "8px", cursor: "default", transition: "background 0.15s" }}
-                    onMouseEnter={(e) => { (e.currentTarget).style.background = "var(--muted)"; }}
-                    onMouseLeave={(e) => { (e.currentTarget).style.background = "transparent"; }}
+                    onMouseEnter={(e) => { e.currentTarget.style.background = "var(--muted)"; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
                   >
                     <GripVertical size={16} style={{ color: "var(--muted-foreground)", opacity: 0.4, flexShrink: 0 }} />
                     <div style={{ ...dayBoxStyle(item.tone), width: 44, height: 36, borderRadius: 8, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em" }}>
