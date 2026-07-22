@@ -7,7 +7,6 @@ import AuthTabs from "../../components/auth/AuthTabs";
 import { cn } from "../../lib/utils";
 import { useAuth } from "../../context/AuthContext";
 
-
 export default function Login() {
   const [role, setRole] = useState("tourist");
   const [email, setEmail] = useState("");
@@ -43,6 +42,7 @@ export default function Login() {
     setSubmitting(true);
     try {
       const user = await login(role, { email, password });
+      
       // If ProtectedRoute redirected here from a private page, send the
       // person back to where they were headed; otherwise go to their dashboard.
       const redirectTo = location.state?.from?.pathname;

@@ -14,6 +14,7 @@ export default function Experiences() {
       setLoading(true);
       try {
         const data = await getAllExperiences();
+        console.log("Loaded experiences:", data);
         setExperiences(data);
       } catch (error) {
         console.error("Error loading experiences:", error);
@@ -29,14 +30,21 @@ export default function Experiences() {
     const q = query.trim().toLowerCase();
     if (!q) return experiences;
     return experiences.filter((e) => 
-      [e.Activity_name, e.Category, e.City].join(" ").toLowerCase().includes(q)
+      [e.Activity_name, e.Category, e.City, e.title, e.tag, e.city]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase()
+        .includes(q)
     );
   }, [query, experiences]);
 
   if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <p className="text-muted-foreground">Loading experiences...</p>
+        <div className="flex flex-col items-center gap-4">
+          <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
+          <p className="text-muted-foreground">Loading experiences...</p>
+        </div>
       </div>
     );
   }
@@ -64,18 +72,21 @@ export default function Experiences() {
 
       <div className="mx-auto max-w-7xl px-5 py-12 sm:px-8">
         {filtered.length === 0 ? (
-          <p className="text-center text-muted-foreground py-16">No experiences match "{query}".</p>
+          <div className="text-center py-16">
+            <p className="text-muted-foreground">No experiences match "{query}".</p>
+            <p className="text-sm text-muted-foreground mt-2">Try a different search or check back later.</p>
+          </div>
         ) : (
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {filtered.map((e) => (
               <ThingCard 
-                key={e.Activity_ID} 
-                slug={e.Activity_ID}
-                title={e.Activity_name}
-                image={e.Image || "/default-experience.jpg"}
-                tag={e.Category || "Experience"}
-                price={e.Price || 0}
-                city={e.City || "Unknown"}
+                key={e.slug || e.Activity_ID} 
+                slug={e.slug || e.Activity_ID}
+                title={e.title || e.Activity_name || "Experience"}
+                image={e.image || e.Image || "/default-experience.jpg"}
+                tag={e.tag || e.Category || "Experience"}
+                price={e.price || e.Price || 0}
+                city={e.city || e.City || "Unknown"}
                 className="w-full" 
               />
             ))}

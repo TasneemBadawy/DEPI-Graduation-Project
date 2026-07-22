@@ -17,20 +17,16 @@ export default function GuideCard({
 }) {
   const [imgError, setImgError] = useState(false);
   
-  // Get the image source - handle both full URLs and relative paths
   let imageSrc = "/default-avatar.jpg";
   
   if (photo && !imgError) {
-    // If photo is already a full URL, use it directly
     if (photo.startsWith('http')) {
       imageSrc = photo;
     } else {
-      // Otherwise, try to get the full URL
       const fullUrl = getProfileImageUrl(photo);
       imageSrc = fullUrl || "/default-avatar.jpg";
     }
   } else if (name) {
-    // Fallback to initials avatar
     imageSrc = getInitialsAvatar(name);
   }
 
@@ -63,6 +59,14 @@ export default function GuideCard({
       <div className="p-3.5">
         <p className="text-sm font-medium text-foreground line-clamp-1">{specialty}</p>
         <p className="mt-1 text-xs text-muted-foreground line-clamp-1">{languages?.join(" · ") || ""}</p>
+        {/* ✅ Add Book button */}
+        <Link
+          to={`/booking/${slug}`}
+          className="mt-3 block w-full text-center btn btn-warm btn-sm"
+          onClick={(e) => e.stopPropagation()}
+        >
+          Book Now
+        </Link>
       </div>
     </Link>
   );

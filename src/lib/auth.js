@@ -56,14 +56,16 @@ export function logout() {
 
 /** Where each role should land right after signing in or registering. */
 export function dashboardPathForRole(role) {
-  return role === "guide" ? "/dashboard/guide" : "/dashboard/tourist";
+  if (role === "admin") return "/dashboard/admin";
+  if (role === "guide") return "/dashboard/guide";
+  return "/dashboard/tourist";
 }
 
 /* ─────────────────────────── normalization ─────────────────────────── */
 
 /** Flattens raw SQL user rows from different tables into one predictable shape. */
 function normalizeUser(raw, role) {
-  const id = raw?.User_ID ?? raw?.Guide_ID ?? raw?.id ?? null;
+  const id = raw?.User_ID ?? raw?.Guide_ID ?? raw?.Admin_ID ?? raw?.id ?? null;
   const firstName = raw?.FName ?? raw?.firstName ?? "";
   const lastName = raw?.LName ?? raw?.lastName ?? "";
 
@@ -87,6 +89,7 @@ function normalizeUser(raw, role) {
     languages: raw?.languages ?? undefined,
     Guide_ID: raw?.Guide_ID ?? null,
     User_ID: raw?.User_ID ?? null,
+    Admin_ID: raw?.Admin_ID ?? null,
     raw,
   };
 }
@@ -133,18 +136,41 @@ async function apiRequest(path, { method = "GET", body, auth = false, isFormData
 
 /* ─────────────────────────── auth endpoints ─────────────────────────── */
 
-const ROLE_PATH = { tourist: "tourist", guide: "guides" };
+const ROLE_PATH = { tourist: "tourist", guide: "guides", admin: "admin" };
 
-/** Logs in a tourist or guide */
+/** Logs in a tourist, guide, or admin */
 export async function login(role, { email, password }) {
+  console.log("Login called with role:", role);
+  console.log("Email:", email);
+  
   const rolePath = ROLE_PATH[role] ?? "tourist";
-  const data = await apiRequest(`/api/auth/${rolePath}/login`, {
+  
+  // For admin, use the admin login endpoint
+  const endpoint = role === "admin" 
+    ? `/api/auth/admin/login` 
+    : `/api/auth/${rolePath}/login`;
+  
+  console.log("Endpoint:", endpoint);
+  
+  const data = await apiRequest(endpoint, {
     method: "POST",
     body: { Email: email, Password: password },
   });
 
-  const rawUser = role === "guide" ? data.guide : data.tourist;
+  console.log("Login response data:", data);
+
+  let rawUser;
+  if (role === "admin") {
+    rawUser = data.admin;
+    console.log("Admin user data:", rawUser);
+  } else if (role === "guide") {
+    rawUser = data.guide;
+  } else {
+    rawUser = data.tourist;
+  }
+  
   const user = normalizeUser(rawUser, role);
+  console.log("Normalized user:", user);
   setSession(user, data.token);
   return user;
 }

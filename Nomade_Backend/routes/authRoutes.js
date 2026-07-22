@@ -4,7 +4,6 @@ import {
   logInTourist,
   registerGuide,
   loginGuide,
-  registerAdmin,
   loginAdmin,
 } from "../controllers/authController.js";
 import upload from "../middlewares/uploadMiddleware.js";
@@ -19,8 +18,7 @@ router.post("/tourist/login", logInTourist);
 router.post("/guides/register", upload.single("Profile_Image"), registerGuide);
 router.post("/guides/login", loginGuide);
 
-// Admin routes
-router.post("/admin/register", upload.single("Profile_Image"), registerAdmin);
+// ✅ Admin login route
 router.post("/admin/login", loginAdmin);
 
 export default router;

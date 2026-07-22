@@ -5,12 +5,13 @@ import { ArrowLeft, Calendar, Users, DollarSign, Clock, MapPin } from "lucide-re
 import { getGuideById } from "../lib/guideStore";
 import { getToursByGuide } from "../lib/tourStore";
 import { getCurrentUser } from "../lib/auth";
-import { createBooking } from "../lib/bookingStore";
+import { createBooking } from "../lib/bookingStore";  // ✅ Correct import
 import BookingModal from "../components/BookingModal";
 import Footer from "../components/Footer";
 import Navbar from "../components/ui/Navbar";
 import TourCard from "../components/cards/TourCard";
 import Avatar from "../components/ui/Avatar";
+
 
 export default function Booking() {
   const { guideId } = useParams();

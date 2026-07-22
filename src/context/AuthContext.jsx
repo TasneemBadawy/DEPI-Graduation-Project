@@ -37,9 +37,11 @@ export function AuthProvider({ children }) {
     setError("");
     try {
       const loggedInUser = await authLib.login(role, credentials);
+      console.log("Login successful, user:", loggedInUser);
       setUser(loggedInUser);
       return loggedInUser;
     } catch (err) {
+      console.error("Login error:", err);
       setError(err.message);
       throw err;
     }

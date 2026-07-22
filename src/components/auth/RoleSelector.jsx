@@ -4,12 +4,15 @@ import { cn } from "../../lib/utils";
 const ROLES = [
   { id: "tourist", label: "Tourist", sub: "Discover & book journeys", Icon: Compass },
   { id: "guide", label: "Tour Guide", sub: "Host travelers worldwide", Icon: MapPin },
+  // ✅ Admin is NOT here - this is correct
 ];
 
 export default function RoleSelector({ value, onChange }) {
   return (
     <div className="mb-6">
-      <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-muted-foreground">I am a</label>
+      <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+        I am a
+      </label>
       <div className="grid grid-cols-2 gap-2">
         {ROLES.map(({ id, label, sub, Icon }) => {
           const active = value === id;
@@ -25,7 +28,9 @@ export default function RoleSelector({ value, onChange }) {
             >
               {active && <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-primary" />}
               <Icon className={cn("h-4 w-4", active ? "text-primary" : "text-muted-foreground")} />
-              <div className={cn("mt-1.5 text-sm font-semibold", active ? "text-primary" : "text-foreground")}>{label}</div>
+              <div className={cn("mt-1.5 text-sm font-semibold", active ? "text-primary" : "text-foreground")}>
+                {label}
+              </div>
               <div className="text-[11px] leading-tight text-muted-foreground">{sub}</div>
             </button>
           );

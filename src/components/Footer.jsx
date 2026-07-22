@@ -28,6 +28,11 @@ export default function Footer() {
           </div>
         </div>
       </div>
+<div className="text-center text-xs text-muted-foreground mt-4">
+  <Link to="/admin/login" className="opacity-20 hover:opacity-100 transition-opacity">
+    Admin
+  </Link>
+</div>
     </footer>
   );
 }

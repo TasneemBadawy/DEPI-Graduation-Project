@@ -1,27 +1,64 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Star, MapPin, Calendar } from "lucide-react";
-import { isTourAvailable } from "../../lib/bookingStore";
 import { getCurrentUser } from "../../lib/auth";
 import BookingModal from "../../components/BookingModal";
+import { createBooking } from "../../lib/bookingStore";
 
-export default function TourCard({ slug, title, city, image, duration, price, rating, reviews, className = "", guideName, guideId }) {
+export default function TourCard({ 
+  slug, 
+  title, 
+  city, 
+  image, 
+  duration, 
+  price, 
+  rating, 
+  reviews, 
+  className = "", 
+  guideName, 
+  guideId,
+  id 
+}) {
   const [showBooking, setShowBooking] = useState(false);
-  const [available, setAvailable] = useState(null);
-  const [checking, setChecking] = useState(false);
   const currentUser = getCurrentUser();
 
-  const handleCheckAvailability = async (e) => {
+  const handleBookNow = (e) => {
     e.preventDefault();
     e.stopPropagation();
-    setChecking(true);
-    // Check availability (mock - you can implement real check)
-    const isAvail = isTourAvailable(slug);
-    setAvailable(isAvail);
-    setChecking(false);
     
-    if (isAvail && currentUser) {
-      setShowBooking(true);
+    if (!currentUser) {
+      // Redirect to login
+      window.location.href = `/login?redirect=/tours/${slug}`;
+      return;
+    }
+    
+    setShowBooking(true);
+  };
+
+  const handleConfirmBooking = (bookingData) => {
+    try {
+      // Use the imported createBooking function directly
+      const newBooking = createBooking({
+        touristId: currentUser.id || currentUser.User_ID,
+        touristName: currentUser.name || "Traveler",
+        touristCountry: currentUser.country || "Unknown",
+        guideId: guideId || 1,
+        guideName: guideName || "Guide",
+        guideRating: 4.5,
+        tourId: id || slug,
+        tourTitle: title,
+        tourPrice: price,
+        city: city,
+        duration: duration || "Half day",
+        ...bookingData,
+      });
+      
+      setShowBooking(false);
+      alert("Booking confirmed! Check your dashboard.");
+      window.location.href = "/dashboard/tourist";
+    } catch (error) {
+      console.error("Error creating booking:", error);
+      alert(error.message || "Failed to create booking. Please try again.");
     }
   };
 
@@ -37,6 +74,9 @@ export default function TourCard({ slug, title, city, image, duration, price, ra
             alt={title}
             loading="lazy"
             className="h-full w-full object-cover transition-transform duration-500 group-hover/card:scale-105"
+            onError={(e) => {
+              e.target.src = "/default-tour.jpg";
+            }}
           />
           <div className="absolute left-3 top-3 inline-flex items-center gap-1 rounded-full bg-white/95 px-2.5 py-1 text-[11px] font-semibold text-foreground shadow-sm">
             <MapPin className="h-3 w-3 text-primary" /> {city}
@@ -46,10 +86,10 @@ export default function TourCard({ slug, title, city, image, duration, price, ra
           <h3 className="text-sm font-semibold leading-snug text-foreground line-clamp-2">{title}</h3>
           <div className="mt-2 flex items-center justify-between">
             <span className="inline-flex items-center gap-1 text-xs font-semibold text-foreground">
-              <Star className="h-3.5 w-3.5 fill-primary text-primary" /> {rating}
-              <span className="font-normal text-muted-foreground">({reviews})</span>
+              <Star className="h-3.5 w-3.5 fill-primary text-primary" /> {rating || "New"}
+              <span className="font-normal text-muted-foreground">({reviews || 0})</span>
             </span>
-            <span className="text-xs text-muted-foreground">{duration}</span>
+            <span className="text-xs text-muted-foreground">{duration || "Half day"}</span>
           </div>
           <div className="mt-2 border-t border-border pt-2 text-sm">
             <span className="text-muted-foreground">from </span>
@@ -57,11 +97,10 @@ export default function TourCard({ slug, title, city, image, duration, price, ra
             <span className="text-muted-foreground"> /person</span>
           </div>
           <button
-            onClick={handleCheckAvailability}
+            onClick={handleBookNow}
             className="mt-3 w-full btn btn-warm btn-sm"
-            disabled={checking}
           >
-            {checking ? "Checking..." : "Check Availability"}
+            Book Now
           </button>
         </div>
       </Link>
@@ -71,33 +110,8 @@ export default function TourCard({ slug, title, city, image, duration, price, ra
         <BookingModal
           tour={{ slug, title, city, image, duration, price, rating, reviews }}
           guideName={guideName || "Guide"}
-          onClose={() => {
-            setShowBooking(false);
-            setAvailable(null);
-          }}
-          onConfirm={(bookingData) => {
-            // Create booking
-            const { createBooking } = require("../../lib/bookingStore");
-            const user = getCurrentUser();
-            createBooking({
-              touristId: user.id || user.User_ID,
-              touristName: user.name,
-              touristCountry: user.country || "Unknown",
-              guideId: guideId || 1,
-              guideName: guideName || "Guide",
-              guideRating: 4.5,
-              tourId: slug,
-              tourTitle: title,
-              tourPrice: price,
-              city: city,
-              duration: duration,
-              ...bookingData,
-            });
-            setShowBooking(false);
-            setAvailable(null);
-            // Show success message
-            alert("Booking confirmed! Check your dashboard.");
-          }}
+          onClose={() => setShowBooking(false)}
+          onConfirm={handleConfirmBooking}
         />
       )}
     </>

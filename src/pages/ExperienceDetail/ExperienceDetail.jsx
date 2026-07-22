@@ -1,36 +1,69 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useParams, Navigate } from "react-router-dom";
 import { MapPin, Bookmark } from "lucide-react";
 import Button from "../../components/ui/Button";
 import Footer from "../../components/Footer";
-import { EXPERIENCES } from "../../data/experiences";
+import { getExperienceById } from "../../lib/experienceStore";
 import { isActivitySaved, toggleSavedActivity } from "../../lib/savedActivities";
 
 export default function ExperienceDetail() {
   const { slug } = useParams();
-  const exp = EXPERIENCES.find((e) => e.slug === slug);
-  const [saved, setSaved] = useState(exp ? isActivitySaved(exp.slug) : false);
+  const [exp, setExp] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [saved, setSaved] = useState(false);
+
+  useEffect(() => {
+    const loadExperience = async () => {
+      setLoading(true);
+      try {
+        const data = await getExperienceById(slug);
+        setExp(data);
+        if (data) {
+          setSaved(isActivitySaved(data.slug || data.Activity_ID));
+        }
+      } catch (error) {
+        console.error("Error loading experience:", error);
+        setExp(null);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadExperience();
+  }, [slug]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <p>Loading experience...</p>
+      </div>
+    );
+  }
 
   if (!exp) return <Navigate to="/experiences" replace />;
 
   const handleToggleSave = () => {
-    const nowSaved = toggleSavedActivity(exp);
+    const nowSaved = toggleSavedActivity({
+      slug: exp.slug || exp.Activity_ID,
+      title: exp.title || exp.Activity_name,
+      city: exp.city || exp.City,
+      price: exp.price || exp.Price,
+    });
     setSaved(nowSaved);
   };
 
   return (
     <div className="min-h-screen bg-background">
       <div className="h-64 w-full overflow-hidden sm:h-96">
-        <img src={exp.image} alt={exp.title} className="h-full w-full object-cover" />
+        <img src={exp.image || exp.Image || "/default-experience.jpg"} alt={exp.title || exp.Activity_name} className="h-full w-full object-cover" />
       </div>
 
       <div className="mx-auto max-w-3xl px-5 py-10 sm:px-8">
         <div className="flex items-start justify-between gap-4">
           <div>
             <span className="inline-flex items-center gap-1 text-xs font-semibold uppercase tracking-wide text-secondary">
-              <MapPin className="h-3.5 w-3.5" /> {exp.city}
+              <MapPin className="h-3.5 w-3.5" /> {exp.city || exp.City}
             </span>
-            <span className="ml-2 rounded-full bg-muted px-2.5 py-1 text-[11px] font-medium text-muted-foreground">{exp.tag}</span>
+            <span className="ml-2 rounded-full bg-muted px-2.5 py-1 text-[11px] font-medium text-muted-foreground">{exp.tag || exp.Category}</span>
           </div>
           <button
             type="button"
@@ -43,23 +76,14 @@ export default function ExperienceDetail() {
             {saved ? "Saved" : "Save"}
           </button>
         </div>
-        <h1 className="mt-2 text-2xl font-bold text-foreground sm:text-3xl">{exp.title}</h1>
+        <h1 className="mt-2 text-2xl font-bold text-foreground sm:text-3xl">{exp.title || exp.Activity_name}</h1>
 
         <div className="mt-6 rounded-2xl border border-border bg-card p-6">
           <h2 className="text-base font-semibold text-foreground">About this experience</h2>
           <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-            A bucket-list moment in {exp.city}, hosted by vetted Nomade locals. Small groups, flexible timing,
-            and everything arranged so you can just show up and enjoy it.
+            {exp.Description || `A bucket-list moment in ${exp.city || exp.City}, hosted by vetted Nomade locals. Small groups, flexible timing, and everything arranged so you can just show up and enjoy it.`}
           </p>
         </div>
-
-        {/* <div className="mt-6 flex items-center justify-between rounded-2xl border border-border bg-card p-5">
-          <div>
-            <div className="text-sm text-muted-foreground">from</div>
-            <div className="text-xl font-bold text-foreground">${exp.price} <span className="text-sm font-normal text-muted-foreground">/ person</span></div>
-          </div>
-          <Button variant="hero" size="lg">Check availability</Button>
-        </div> */}
       </div>
 
       <Footer />

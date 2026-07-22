@@ -1,9 +1,8 @@
 import bcrypt from "bcrypt";
 import { findTouristByEmail, createTourist } from "../models/touristModel.js";
 import { findGuideByEmail, createGuide } from "../models/guideModel.js";
-import { findAdminByEmail, createAdmin } from "../models/adminModel.js";
+import { findAdminByEmail } from "../models/adminModel.js";
 import { generateToken } from "../utils/generateToken.js";
-
 /******************************Validations*******************************************/
 const validateEmail = (email) => {
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -197,44 +196,14 @@ export const loginGuide = async (req, res) => {
   }
 };
 
-/******************************Admin********************************************/
-
-/***************************Register Admin**********************************/
-export const registerAdmin = async (req, res) => {
-  const { FName, LName, Email, Password } = req.body;
-  const Profile_Image = req.file ? req.file.path : null;
-
-  if (!FName || FName.trim() === "" || !LName || LName.trim() === "") {
-    return res.status(400).json({ error: "First name and Last name are required." });
-  }
-  if (!Email || !validateEmail(Email)) {
-    return res.status(400).json({ error: "A valid email is required." });
-  }
-  if (!Password || Password.length < 6) {
-    return res.status(400).json({ error: "Password must be at least 6 characters long." });
-  }
-
-  try {
-    const existingAdmin = await findAdminByEmail(Email);
-    if (existingAdmin) {
-      return res.status(400).json({ error: "Admin with this email already exists" });
-    }
-
-    const hashPassword = await bcrypt.hash(Password, 10);
-    await createAdmin(FName, LName, Email, hashPassword, Profile_Image);
-
-    res.status(201).json({
-      message: "Admin registered successfully.",
-    });
-  } catch (err) {
-    console.error("Admin registration error:", err);
-    res.status(500).json({ error: err.message });
-  }
-};
+// Add this to your authController.js
 
 /***************************Login Admin**********************************/
 export const loginAdmin = async (req, res) => {
   const { Email, Password } = req.body;
+
+  console.log("=== Admin Login Attempt ===");
+  console.log("Email:", Email);
 
   if (!Email || !validateEmail(Email)) {
     return res.status(400).json({ error: "Valid email is required" });
@@ -245,11 +214,25 @@ export const loginAdmin = async (req, res) => {
 
   try {
     const admin = await findAdminByEmail(Email);
+    console.log("Admin found:", admin ? "Yes" : "No");
+
     if (!admin) {
       return res.status(401).json({ error: "Invalid email or password" });
     }
 
-    const isPasswordValid = await bcrypt.compare(Password, admin.Password);
+    // Try bcrypt compare first
+    let isPasswordValid = await bcrypt.compare(Password, admin.Password);
+    
+    // If bcrypt fails, try plain text (for development)
+    if (!isPasswordValid) {
+      isPasswordValid = Password === admin.Password;
+      if (isPasswordValid) {
+        console.log("⚠️ Password matched as plain text - consider hashing it");
+      }
+    }
+    
+    console.log("Password valid:", isPasswordValid);
+
     if (!isPasswordValid) {
       return res.status(401).json({ error: "Invalid email or password" });
     }
@@ -264,6 +247,9 @@ export const loginAdmin = async (req, res) => {
     });
   } catch (err) {
     console.error("Admin login error:", err);
-    res.status(500).json({ error: "Failed to login", message: err.message });
+    res.status(500).json({ 
+      error: "Failed to login", 
+      message: err.message 
+    });
   }
 };

@@ -9,6 +9,7 @@ import activityRoutes from "./routes/activityRoutes.js";
 import guideRoutes from "./routes/guideRoutes.js";
 import uploadRoutes from "./routes/uploadRoutes.js";
 import swaggerDocs from "./swagger/swaggerDocs.js";
+import { createDefaultAdmin } from "./utils/createDefaultAdmin.js";
 
 config();
 
@@ -28,7 +29,10 @@ app.use("/reviews", reviewRoutes);
 app.use("/booking", bookingRoutes);
 
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
+app.listen(PORT, async () => {
+  console.log(`🚀 Server is running on port ${PORT}`);
   console.log(`📄 Swagger Docs: http://localhost:${PORT}/api-docs`);
+  
+  // ✅ Create default admin on server start
+  await createDefaultAdmin();
 });

@@ -1,5 +1,5 @@
 import { useMemo, useState, useEffect } from "react";
-import { useParams, useLocation, Navigate, Link } from "react-router-dom";
+import { useParams, useLocation, Navigate, Link, useNavigate } from "react-router-dom";
 import {
   Star, MapPin, Languages, BadgeCheck, ShieldCheck, ChevronLeft, ChevronRight, Pencil, Trash2, X,
 } from "lucide-react";
@@ -7,17 +7,20 @@ import Button from "../../components/ui/Button";
 import TourCard from "../../components/cards/TourCard";
 import Footer from "../../components/Footer";
 import Avatar from "../../components/ui/Avatar";
+import BookingModal from "../../components/BookingModal";
 import { getGuideById } from "../../lib/guideStore";
 import { getToursByGuide } from "../../lib/tourStore";
 import { getReviewsForGuide, addReview, deleteReview } from "../../lib/reviewStore";
 import { getCurrentUser } from "../../lib/auth";
 import { getProfileImageUrl } from "../../lib/uploadStore";
+import { createBooking } from "../../lib/bookingStore";
 
 const TABS = ["About", "Tours", "Reviews", "Availability"];
 
 export default function GuideProfile() {
   const { slug } = useParams();
   const location = useLocation();
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("About");
   const [guide, setGuide] = useState(null);
   const [tours, setTours] = useState([]);
@@ -25,6 +28,7 @@ export default function GuideProfile() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [modalOpen, setModalOpen] = useState(false);
+  const [showGuideBooking, setShowGuideBooking] = useState(false);
   const currentUser = getCurrentUser();
 
   // Load guide data from API
@@ -93,6 +97,40 @@ export default function GuideProfile() {
     } catch (error) {
       console.error("Error deleting review:", error);
       alert(error.message || "Failed to delete review");
+    }
+  };
+
+  // ✅ Handle guide booking
+  const handleGuideBooking = (bookingData) => {
+    try {
+      if (!currentUser) {
+        navigate("/login", { state: { from: `/booking/guide/${guide.Guide_ID}` } });
+        return;
+      }
+
+      const guideName = `${guide.FName || ''} ${guide.LName || ''}`.trim() || "Guide";
+      
+      const newBooking = createBooking({
+        touristId: currentUser.id || currentUser.User_ID,
+        touristName: currentUser.name || "Traveler",
+        touristCountry: currentUser.country || "Unknown",
+        guideId: guide.Guide_ID,
+        guideName: guideName,
+        guideRating: 4.5,
+        tourId: `guide-${guide.Guide_ID}`,
+        tourTitle: `Private Tour with ${guideName}`,
+        tourPrice: 100,
+        city: guide.Country || "Various",
+        duration: "Flexible - Customizable",
+        ...bookingData,
+      });
+      
+      setShowGuideBooking(false);
+      alert("✅ Booking request sent successfully!\n\nThe guide will confirm your booking shortly.\nCheck your dashboard for updates.");
+      navigate("/dashboard/tourist");
+    } catch (error) {
+      console.error("Error creating booking:", error);
+      alert("❌ " + (error.message || "Failed to create booking. Please try again."));
     }
   };
 
@@ -213,20 +251,21 @@ export default function GuideProfile() {
 
           <aside className="h-fit space-y-4 lg:sticky lg:top-20">
             <div className="rounded-2xl border border-border bg-card p-5 shadow-card">
-            <Button 
-  variant="hero" 
-  size="xl" 
-  className="mt-4 w-full"
-  onClick={() => {
-    if (!currentUser) {
-      navigate("/login", { state: { from: `/booking/${guide.Guide_ID}` } });
-      return;
-    }
-    navigate(`/booking/${guide.Guide_ID}`);
-  }}
->
-  Request booking
-</Button>              <p className="mt-3 text-xs text-muted-foreground">You won't be charged yet.</p>
+              <Button 
+                variant="hero" 
+                size="xl" 
+                className="mt-4 w-full"
+                onClick={() => {
+                  if (!currentUser) {
+                    navigate("/login", { state: { from: `/booking/guide/${guideDisplay.Guide_ID}` } });
+                    return;
+                  }
+                  setShowGuideBooking(true);
+                }}
+              >
+                Request booking
+              </Button>
+              <p className="mt-3 text-xs text-muted-foreground">You won't be charged yet.</p>
               <ul className="mt-4 space-y-2 border-t border-border pt-4 text-xs text-muted-foreground">
                 <li className="flex items-center gap-1.5"><ShieldCheck className="h-3.5 w-3.5 text-secondary" /> Free cancellation up to 48h</li>
                 <li className="flex items-center gap-1.5"><ShieldCheck className="h-3.5 w-3.5 text-secondary" /> Verified by Nomade</li>
@@ -240,6 +279,26 @@ export default function GuideProfile() {
       <div className="mt-16">
         <Footer />
       </div>
+
+      {/* ✅ Guide Booking Modal */}
+      {showGuideBooking && (
+        <BookingModal
+          tour={{
+            slug: `guide-${guideDisplay.Guide_ID}`,
+            title: `Private Tour with ${guideDisplay.name}`,
+            city: guideDisplay.city || "Various",
+            image: guideDisplay.photo || "/default-tour.jpg",
+            duration: "Flexible - Customizable",
+            price: 100,
+            rating: guideDisplay.rating || 4.5,
+            reviews: guideDisplay.reviews || 0,
+            groupSize: "1-6 people",
+          }}
+          guideName={guideDisplay.name}
+          onClose={() => setShowGuideBooking(false)}
+          onConfirm={handleGuideBooking}
+        />
+      )}
     </div>
   );
 }
@@ -262,7 +321,7 @@ function AboutTab({ guide }) {
           {guide.about}
         </p>
         
-        {/* ✅ Contact & Social Media */}
+        {/* Contact & Social Media */}
         <div className="mt-4 pt-4 border-t border-border">
           <h4 className="text-sm font-semibold text-foreground mb-2">Contact & Social</h4>
           {guide.Email && (

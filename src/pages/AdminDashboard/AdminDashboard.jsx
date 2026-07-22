@@ -1,109 +1,142 @@
 "use client";
-import { useMemo, useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import {
   Search, Users, ShieldCheck, UserX, UserCheck, Compass as CompassIcon,
-  Sparkles, MessageSquare, Star, MapPin, Trash2,
+  Sparkles, MessageSquare, Star, MapPin, Trash2, Plus, Pencil, X,
 } from "lucide-react";
-import { getGuideBySlug } from "../../data/guides";
-import { getGuidesWithStatus, setGuideVerified } from "../../lib/adminStore";
-import { TOURISTS, getInitials } from "../../data/tourists";
-import { getAllTours } from "../../lib/tourStore";
-import { EXPERIENCES } from "../../data/experiences";
-import { SEED_REVIEWS } from "../../data/reviews";
-import { getAllReviews, deleteReview as deleteReviewApi } from "../../lib/reviewStore";
+
+// Sample data
+const SAMPLE_GUIDES = [
+  { id: 1, name: "Ahmed Mohamed", city: "Cairo", verified: true, rating: 4.9, reviews: 120, tours: 5 },
+  { id: 2, name: "Sara Ali", city: "Luxor", verified: false, rating: 4.7, reviews: 85, tours: 3 },
+  { id: 3, name: "Karim Hassan", city: "Aswan", verified: true, rating: 4.8, reviews: 200, tours: 8 },
+];
+
+const SAMPLE_TOURISTS = [
+  { id: 1, name: "John Doe", email: "john@email.com", country: "USA", joined: "Jan 2025", trips: 3, status: "Active" },
+  { id: 2, name: "Jane Smith", email: "jane@email.com", country: "UK", joined: "Feb 2025", trips: 1, status: "New" },
+];
+
+const SAMPLE_TOURS = [
+  { id: 1, title: "Pyramids Tour", city: "Cairo", price: 150, guide: "Ahmed Mohamed", rating: 4.9 },
+  { id: 2, title: "Nile Cruise", city: "Luxor", price: 200, guide: "Sara Ali", rating: 4.7 },
+];
+
+// ✅ Sample Activities Data
+const SAMPLE_ACTIVITIES = [
+  { id: 1, title: "Sunrise Hot Air Balloon", category: "Adventure", city: "Luxor", price: 180, status: "Live" },
+  { id: 2, title: "Red Sea Snorkeling", category: "Water", city: "Hurghada", price: 75, status: "Live" },
+  { id: 3, title: "Camel Ride in Desert", category: "Cultural", city: "Merzouga", price: 45, status: "Live" },
+  { id: 4, title: "Street Food Tour", category: "Food", city: "Bangkok", price: 35, status: "Live" },
+];
 
 const TABS = [
   { id: "guides", label: "Guides", Icon: Users },
   { id: "tourists", label: "Tourists", Icon: UserCheck },
   { id: "tours", label: "Tours", Icon: CompassIcon },
-  { id: "activities", label: "Activities", Icon: Sparkles },
+  { id: "activities", label: "Activities", Icon: Sparkles }, // ✅ Added Activities tab
   { id: "reviews", label: "Reviews", Icon: MessageSquare },
 ];
-
-function guideEmail(guide) {
-  const handle = guide.slug.split("-")[0];
-  return `${handle}@nomade.co`;
-}
 
 export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState("guides");
   const [query, setQuery] = useState("");
-  const [guides, setGuides] = useState(() => getGuidesWithStatus());
+  const [guides, setGuides] = useState(SAMPLE_GUIDES);
+  const [tourists, setTourists] = useState(SAMPLE_TOURISTS);
+  const [tours, setTours] = useState(SAMPLE_TOURS);
+  const [activities, setActivities] = useState(SAMPLE_ACTIVITIES);
   const [reviews, setReviews] = useState([]);
-  const [loadingReviews, setLoadingReviews] = useState(true);
-  const [deleteDialog, setDeleteDialog] = useState(null); // { reviewId, reviewText, reviewerName }
+  const [loading, setLoading] = useState(false);
+  const [showActivityModal, setShowActivityModal] = useState(false);
+  const [editingActivity, setEditingActivity] = useState(null);
 
-  const tours = useMemo(() => getAllTours(), []);
-
-  // Load reviews from the API
+  // Set admin in localStorage
   useEffect(() => {
-    const loadReviews = async () => {
-      setLoadingReviews(true);
-      try {
-        const apiReviews = await getAllReviews();
-        const formatted = apiReviews.map((r) => {
-          const guide = getGuideBySlug(r.guideSlug);
-          return {
-            id: r.Review_ID || r.id,
-            reviewerName: r.username || r.name || "Anonymous",
-            guideName: guide?.name || r.guideName || "Unknown Guide",
-            tour: r.tour || "—",
-            city: guide?.city || r.city || "—",
-            rating: r.Rate || r.rating || 5,
-            text: r.Content || r.text || "",
-            date: r.createdAt || r.date || new Date().toISOString().split('T')[0],
-            guideSlug: r.guideSlug,
-            userId: r.User_ID,
-          };
-        });
-        setReviews(formatted);
-      } catch (error) {
-        console.error("Error loading reviews:", error);
-        setReviews([]);
-      } finally {
-        setLoadingReviews(false);
-      }
+    const adminUser = {
+      id: "admin-dev",
+      name: "Admin User",
+      email: "admin@nomade.com",
+      role: "admin",
+      isDev: true,
     };
-    loadReviews();
+    localStorage.setItem("nomade_current_user", JSON.stringify(adminUser));
+    console.log("🔓 Admin dashboard loaded");
   }, []);
 
-  const avgRating = reviews.length
-    ? (reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length).toFixed(2)
-    : "—";
-
-  const verifiedCount = guides.filter((g) => g.verified).length;
-  const unverifiedCount = guides.length - verifiedCount;
-
-  const handleToggleVerify = (slug, nextVerified) => {
-    setGuideVerified(slug, nextVerified);
-    setGuides(getGuidesWithStatus());
+  // Filter function
+  const filterData = (data, searchFields) => {
+    const q = query.trim().toLowerCase();
+    if (!q) return data;
+    return data.filter(item => 
+      searchFields.some(field => 
+        String(item[field] || "").toLowerCase().includes(q)
+      )
+    );
   };
 
-  const handleDeleteReview = async (reviewId) => {
-    try {
-      await deleteReviewApi(reviewId);
-      // Remove the review from the local state
-      setReviews(prev => prev.filter(r => r.id !== reviewId));
-      setDeleteDialog(null);
-    } catch (error) {
-      console.error("Error deleting review:", error);
-      alert(error.message || "Failed to delete review. Please try again.");
+  const filteredGuides = filterData(guides, ["name", "city"]);
+  const filteredTourists = filterData(tourists, ["name", "email", "country"]);
+  const filteredTours = filterData(tours, ["title", "city", "guide"]);
+  const filteredActivities = filterData(activities, ["title", "category", "city"]);
+
+  const verifiedCount = guides.filter(g => g.verified).length;
+  const unverifiedCount = guides.length - verifiedCount;
+
+  const toggleVerify = (id) => {
+    setGuides(guides.map(g => 
+      g.id === id ? { ...g, verified: !g.verified } : g
+    ));
+  };
+
+  // ✅ Activity CRUD Functions
+  const handleAddActivity = (newActivity) => {
+    const activity = {
+      id: Date.now(),
+      ...newActivity,
+      status: "Live",
+    };
+    setActivities([...activities, activity]);
+    setShowActivityModal(false);
+  };
+
+  const handleEditActivity = (id, updatedData) => {
+    setActivities(activities.map(a => 
+      a.id === id ? { ...a, ...updatedData } : a
+    ));
+    setShowActivityModal(false);
+    setEditingActivity(null);
+  };
+
+  const handleDeleteActivity = (id) => {
+    if (window.confirm("Are you sure you want to delete this activity?")) {
+      setActivities(activities.filter(a => a.id !== id));
     }
   };
 
-  const q = query.trim().toLowerCase();
-  const matches = (parts) => !q || parts.filter(Boolean).join(" ").toLowerCase().includes(q);
-
-  const filteredGuides = useMemo(() => guides.filter((g) => matches([g.name, g.city])), [guides, q]);
-  const filteredTourists = useMemo(() => TOURISTS.filter((t) => matches([t.name, t.country])), [q]);
-  const filteredTours = useMemo(() => tours.filter((t) => matches([t.title, t.city])), [tours, q]);
-  const filteredActivities = useMemo(() => EXPERIENCES.filter((a) => matches([a.title, a.city])), [q]);
-  const filteredReviews = useMemo(() => reviews.filter((r) => matches([r.reviewerName, r.guideName, r.text])), [reviews, q]);
+  const openEditModal = (activity) => {
+    setEditingActivity(activity);
+    setShowActivityModal(true);
+  };
 
   return (
     <div className="min-h-screen bg-primary-soft">
+      {/* Dev Banner */}
+      <div className="bg-yellow-100 border-b border-yellow-300 px-4 py-2 text-center text-sm text-yellow-800">
+        🔓 Admin Dashboard (Dev Mode)
+        <button 
+          onClick={() => {
+            localStorage.clear();
+            window.location.href = "/";
+          }}
+          className="ml-4 text-yellow-900 underline hover:text-yellow-700"
+        >
+          Clear session
+        </button>
+      </div>
+
       <div className="mx-auto max-w-7xl px-5 py-10 sm:px-8">
+        {/* Header */}
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <span className="inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.14em] text-secondary">
@@ -117,20 +150,20 @@ export default function AdminDashboard() {
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search guides, tourists, tours…"
+              placeholder="Search..."
               className="w-full bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground/70"
             />
           </div>
         </div>
 
-        {/* Stat cards */}
+        {/* Stats */}
         <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
           <StatCard label="Total guides" value={guides.length} Icon={Users} tone="neutral" />
           <StatCard label="Verified guides" value={verifiedCount} Icon={ShieldCheck} tone="success" />
           <StatCard label="Unverified guides" value={unverifiedCount} Icon={UserX} tone="warning" />
-          <StatCard label="Total tourists" value={TOURISTS.length} Icon={UserCheck} tone="neutral" />
+          <StatCard label="Total tourists" value={tourists.length} Icon={UserCheck} tone="neutral" />
           <StatCard label="Total tours" value={tours.length} Icon={CompassIcon} tone="neutral" />
-          <StatCard label="Total activities" value={EXPERIENCES.length} Icon={Sparkles} tone="neutral" />
+          <StatCard label="Activities" value={activities.length} Icon={Sparkles} tone="neutral" />
         </div>
 
         {/* Tabs */}
@@ -151,37 +184,56 @@ export default function AdminDashboard() {
 
         {/* Content */}
         <div className="mt-6 overflow-hidden rounded-2xl border border-border bg-card shadow-card">
-          {activeTab === "guides" && <GuidesTable guides={filteredGuides} onToggleVerify={handleToggleVerify} />}
-          {activeTab === "tourists" && <TouristsTable tourists={filteredTourists} />}
-          {activeTab === "tours" && <ToursTable tours={filteredTours} />}
-          {activeTab === "activities" && <ActivitiesTable activities={filteredActivities} />}
-          {activeTab === "reviews" && (
-            <ReviewsTable 
-              reviews={filteredReviews} 
-              avgRating={avgRating} 
-              loading={loadingReviews}
-              onDeleteReview={(reviewId, reviewText, reviewerName) => 
-                setDeleteDialog({ reviewId, reviewText, reviewerName })
-              }
+          {activeTab === "guides" && (
+            <GuidesTable guides={filteredGuides} onToggleVerify={toggleVerify} />
+          )}
+          {activeTab === "tourists" && (
+            <TouristsTable tourists={filteredTourists} />
+          )}
+          {activeTab === "tours" && (
+            <ToursTable tours={filteredTours} />
+          )}
+          {activeTab === "activities" && (
+            <ActivitiesTable 
+              activities={filteredActivities}
+              onAdd={() => {
+                setEditingActivity(null);
+                setShowActivityModal(true);
+              }}
+              onEdit={openEditModal}
+              onDelete={handleDeleteActivity}
             />
+          )}
+          {activeTab === "reviews" && (
+            <div className="p-8 text-center text-muted-foreground">
+              <p>Reviews section - coming soon</p>
+            </div>
           )}
         </div>
       </div>
 
-      {/* Delete Confirmation Dialog */}
-      {deleteDialog && (
-        <DeleteConfirmationDialog
-          reviewText={deleteDialog.reviewText}
-          reviewerName={deleteDialog.reviewerName}
-          onConfirm={() => handleDeleteReview(deleteDialog.reviewId)}
-          onCancel={() => setDeleteDialog(null)}
+      {/* ✅ Activity Modal */}
+      {showActivityModal && (
+        <ActivityModal
+          activity={editingActivity}
+          onClose={() => {
+            setShowActivityModal(false);
+            setEditingActivity(null);
+          }}
+          onSave={(data) => {
+            if (editingActivity) {
+              handleEditActivity(editingActivity.id, data);
+            } else {
+              handleAddActivity(data);
+            }
+          }}
         />
       )}
     </div>
   );
 }
 
-/* ───────────────────────────── STAT CARD ───────────────────────────── */
+// ─── Helper Components ───
 
 function StatCard({ label, value, Icon, tone }) {
   const toneClasses = {
@@ -202,125 +254,52 @@ function StatCard({ label, value, Icon, tone }) {
   );
 }
 
-/* ───────────────────────────── SHARED TABLE BITS ───────────────────────────── */
-
-function SectionHeader({ title, subtitle, badge }) {
-  return (
-    <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-6 py-5">
-      <div>
-        <h2 className="text-base font-semibold text-foreground">{title}</h2>
-        <p className="mt-0.5 text-xs text-muted-foreground">{subtitle}</p>
-      </div>
-      {badge}
-    </div>
-  );
-}
-
-function EmptyRow({ colSpan, children }) {
-  return (
-    <tr>
-      <td colSpan={colSpan} className="px-6 py-10 text-center text-sm text-muted-foreground">
-        {children}
-      </td>
-    </tr>
-  );
-}
-
-function Th({ children, className = "" }) {
-  return (
-    <th className={`px-6 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground ${className}`}>
-      {children}
-    </th>
-  );
-}
-
-function Td({ children, className = "" }) {
-  return <td className={`px-6 py-4 text-sm text-foreground ${className}`}>{children}</td>;
-}
-
-function StatusBadge({ tone, children }) {
-  const tones = {
-    success: "bg-success/15 text-success",
-    warning: "bg-warning/15 text-warning",
-    neutral: "bg-muted text-muted-foreground",
-  };
-  return (
-    <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold ${tones[tone] || tones.neutral}`}>
-      {children}
-    </span>
-  );
-}
-
-function Stars({ rating }) {
-  const full = Math.round(typeof rating === "number" ? rating : 0);
-  return (
-    <span className="inline-flex items-center gap-0.5">
-      {Array.from({ length: 5 }).map((_, i) => (
-        <Star key={i} className={`h-3.5 w-3.5 ${i < full ? "fill-primary text-primary" : "fill-transparent text-border"}`} />
-      ))}
-    </span>
-  );
-}
-
-/* ───────────────────────────── GUIDES ───────────────────────────── */
-
 function GuidesTable({ guides, onToggleVerify }) {
-  const verifiedCount = guides.filter((g) => g.verified).length;
   return (
     <div>
-      <SectionHeader
-        title="Tour guides"
-        subtitle={`${verifiedCount} verified · ${guides.length - verifiedCount} pending verification`}
-      />
+      <div className="border-b border-border px-6 py-5">
+        <h2 className="text-base font-semibold text-foreground">Tour Guides</h2>
+        <p className="mt-0.5 text-xs text-muted-foreground">
+          {guides.filter(g => g.verified).length} verified · {guides.length - guides.filter(g => g.verified).length} pending
+        </p>
+      </div>
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[720px] border-collapse">
+        <table className="w-full border-collapse">
           <thead>
             <tr className="border-b border-border">
-              <Th>Guide</Th>
-              <Th>City</Th>
-              <Th>Joined</Th>
-              <Th>Tours</Th>
-              <Th>Rating</Th>
-              <Th>Status</Th>
-              <Th className="text-right">Action</Th>
+              <th className="px-6 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Guide</th>
+              <th className="px-6 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">City</th>
+              <th className="px-6 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Rating</th>
+              <th className="px-6 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Status</th>
+              <th className="px-6 py-3 text-right text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Action</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
             {guides.length === 0 ? (
-              <EmptyRow colSpan={7}>No guides match your search.</EmptyRow>
+              <tr>
+                <td colSpan={5} className="px-6 py-10 text-center text-sm text-muted-foreground">No guides found</td>
+              </tr>
             ) : (
               guides.map((g) => (
-                <tr key={g.slug}>
-                  <Td>
-                    <Link to={`/guides/${g.slug}`} className="flex items-center gap-3 hover:opacity-80">
-                      <img src={g.photo} alt={g.name} className="h-9 w-9 rounded-full object-cover" />
-                      <div>
-                        <div className="font-semibold text-foreground">{g.name}</div>
-                        <div className="text-xs text-muted-foreground">{guideEmail(g)}</div>
-                      </div>
-                    </Link>
-                  </Td>
-                  <Td>
-                    <span className="inline-flex items-center gap-1 text-muted-foreground">
-                      <MapPin className="h-3.5 w-3.5" /> {g.city}
-                    </span>
-                  </Td>
-                  <Td className="text-secondary">{g.joinedDate || "—"}</Td>
-                  <Td>{getToursCountForGuide(g.slug)}</Td>
-                  <Td>
-                    <span className="inline-flex items-center gap-1 font-semibold">
+                <tr key={g.id}>
+                  <td className="px-6 py-4 text-sm text-foreground font-semibold">{g.name}</td>
+                  <td className="px-6 py-4 text-sm text-muted-foreground">{g.city}</td>
+                  <td className="px-6 py-4 text-sm text-foreground">
+                    <span className="inline-flex items-center gap-1">
                       <Star className="h-3.5 w-3.5 fill-primary text-primary" /> {g.rating}
                     </span>
-                  </Td>
-                  <Td>
-                    <StatusBadge tone={g.verified ? "success" : "warning"}>
-                      <ShieldCheck className="h-3 w-3" /> {g.verified ? "Verified" : "Not verified"}
-                    </StatusBadge>
-                  </Td>
-                  <Td className="text-right">
+                  </td>
+                  <td className="px-6 py-4">
+                    <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold ${
+                      g.verified ? "bg-success/15 text-success" : "bg-warning/15 text-warning"
+                    }`}>
+                      {g.verified ? "✅ Verified" : "⏳ Pending"}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 text-right">
                     <button
                       type="button"
-                      onClick={() => onToggleVerify(g.slug, !g.verified)}
+                      onClick={() => onToggleVerify(g.id)}
                       className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors ${
                         g.verified
                           ? "border-destructive/30 text-destructive hover:bg-destructive/5"
@@ -329,7 +308,7 @@ function GuidesTable({ guides, onToggleVerify }) {
                     >
                       <UserCheck className="h-3.5 w-3.5" /> {g.verified ? "Unverify" : "Verify"}
                     </button>
-                  </Td>
+                  </td>
                 </tr>
               ))
             )}
@@ -339,51 +318,46 @@ function GuidesTable({ guides, onToggleVerify }) {
     </div>
   );
 }
-
-function getToursCountForGuide(slug) {
-  return getAllTours().filter((t) => t.guideSlug === slug).length;
-}
-
-/* ───────────────────────────── TOURISTS ───────────────────────────── */
 
 function TouristsTable({ tourists }) {
   return (
     <div>
-      <SectionHeader title="Tourists" subtitle={`${tourists.length} registered travelers`} />
+      <div className="border-b border-border px-6 py-5">
+        <h2 className="text-base font-semibold text-foreground">Tourists</h2>
+        <p className="mt-0.5 text-xs text-muted-foreground">{tourists.length} registered travelers</p>
+      </div>
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[640px] border-collapse">
+        <table className="w-full border-collapse">
           <thead>
             <tr className="border-b border-border">
-              <Th>Traveler</Th>
-              <Th>Country</Th>
-              <Th>Joined</Th>
-              <Th>Trips</Th>
-              <Th>Status</Th>
+              <th className="px-6 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Name</th>
+              <th className="px-6 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Email</th>
+              <th className="px-6 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Country</th>
+              <th className="px-6 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Joined</th>
+              <th className="px-6 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Trips</th>
+              <th className="px-6 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Status</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
             {tourists.length === 0 ? (
-              <EmptyRow colSpan={5}>No tourists match your search.</EmptyRow>
+              <tr>
+                <td colSpan={6} className="px-6 py-10 text-center text-sm text-muted-foreground">No tourists found</td>
+              </tr>
             ) : (
               tourists.map((t) => (
                 <tr key={t.id}>
-                  <Td>
-                    <div className="flex items-center gap-3">
-                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-secondary-soft text-xs font-semibold text-secondary">
-                        {getInitials(t.name)}
-                      </div>
-                      <div>
-                        <div className="font-semibold text-foreground">{t.name}</div>
-                        <div className="text-xs text-muted-foreground">{t.email}</div>
-                      </div>
-                    </div>
-                  </Td>
-                  <Td className="text-muted-foreground">{t.country}</Td>
-                  <Td className="text-secondary">{t.joinedDate}</Td>
-                  <Td>{t.trips}</Td>
-                  <Td>
-                    <StatusBadge tone={t.status === "Active" ? "success" : "neutral"}>{t.status}</StatusBadge>
-                  </Td>
+                  <td className="px-6 py-4 text-sm text-foreground font-semibold">{t.name}</td>
+                  <td className="px-6 py-4 text-sm text-muted-foreground">{t.email}</td>
+                  <td className="px-6 py-4 text-sm text-muted-foreground">{t.country}</td>
+                  <td className="px-6 py-4 text-sm text-muted-foreground">{t.joined}</td>
+                  <td className="px-6 py-4 text-sm text-foreground">{t.trips}</td>
+                  <td className="px-6 py-4">
+                    <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold ${
+                      t.status === "Active" ? "bg-success/15 text-success" : "bg-warning/15 text-warning"
+                    }`}>
+                      {t.status}
+                    </span>
+                  </td>
                 </tr>
               ))
             )}
@@ -393,58 +367,44 @@ function TouristsTable({ tourists }) {
     </div>
   );
 }
-
-/* ───────────────────────────── TOURS ───────────────────────────── */
 
 function ToursTable({ tours }) {
   return (
     <div>
-      <SectionHeader title="Tours" subtitle={`${tours.length} tours live across the platform`} />
+      <div className="border-b border-border px-6 py-5">
+        <h2 className="text-base font-semibold text-foreground">Tours</h2>
+        <p className="mt-0.5 text-xs text-muted-foreground">{tours.length} tours live</p>
+      </div>
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[720px] border-collapse">
+        <table className="w-full border-collapse">
           <thead>
             <tr className="border-b border-border">
-              <Th>Tour</Th>
-              <Th>Guide</Th>
-              <Th>City</Th>
-              <Th>Price</Th>
-              <Th>Reviews</Th>
-              <Th>Rating</Th>
-              <Th>Status</Th>
+              <th className="px-6 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Title</th>
+              <th className="px-6 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">City</th>
+              <th className="px-6 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Guide</th>
+              <th className="px-6 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Price</th>
+              <th className="px-6 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Rating</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
             {tours.length === 0 ? (
-              <EmptyRow colSpan={7}>No tours match your search.</EmptyRow>
+              <tr>
+                <td colSpan={5} className="px-6 py-10 text-center text-sm text-muted-foreground">No tours found</td>
+              </tr>
             ) : (
-              tours.map((t) => {
-                const guide = getGuideBySlug(t.guideSlug);
-                return (
-                  <tr key={t.slug}>
-                    <Td>
-                      <Link to={`/tours/${t.slug}`} className="font-semibold text-foreground hover:text-primary">
-                        {t.title}
-                      </Link>
-                    </Td>
-                    <Td className="text-muted-foreground">{guide ? guide.name : "—"}</Td>
-                    <Td>
-                      <span className="inline-flex items-center gap-1 text-muted-foreground">
-                        <MapPin className="h-3.5 w-3.5" /> {t.city}
-                      </span>
-                    </Td>
-                    <Td className="font-semibold text-primary">${t.price}</Td>
-                    <Td className="text-muted-foreground">{t.reviews ?? 0}</Td>
-                    <Td>
-                      <span className="inline-flex items-center gap-1 font-semibold">
-                        <Star className="h-3.5 w-3.5 fill-primary text-primary" /> {t.rating}
-                      </span>
-                    </Td>
-                    <Td>
-                      <StatusBadge tone="success">Live</StatusBadge>
-                    </Td>
-                  </tr>
-                );
-              })
+              tours.map((t) => (
+                <tr key={t.id}>
+                  <td className="px-6 py-4 text-sm text-foreground font-semibold">{t.title}</td>
+                  <td className="px-6 py-4 text-sm text-muted-foreground">{t.city}</td>
+                  <td className="px-6 py-4 text-sm text-muted-foreground">{t.guide}</td>
+                  <td className="px-6 py-4 text-sm text-primary font-semibold">${t.price}</td>
+                  <td className="px-6 py-4 text-sm text-foreground">
+                    <span className="inline-flex items-center gap-1">
+                      <Star className="h-3.5 w-3.5 fill-primary text-primary" /> {t.rating}
+                    </span>
+                  </td>
+                </tr>
+              ))
             )}
           </tbody>
         </table>
@@ -453,46 +413,74 @@ function ToursTable({ tours }) {
   );
 }
 
-/* ───────────────────────────── ACTIVITIES ───────────────────────────── */
-
-function ActivitiesTable({ activities }) {
+// ✅ Activities Table Component
+function ActivitiesTable({ activities, onAdd, onEdit, onDelete }) {
   return (
     <div>
-      <SectionHeader title="Activities" subtitle={`${activities.length} experiences bookable across cities`} />
+      <div className="flex flex-wrap items-center justify-between border-b border-border px-6 py-5">
+        <div>
+          <h2 className="text-base font-semibold text-foreground">Activities</h2>
+          <p className="mt-0.5 text-xs text-muted-foreground">{activities.length} activities available</p>
+        </div>
+        <button
+          type="button"
+          onClick={onAdd}
+          className="btn btn-warm btn-sm flex items-center gap-1"
+        >
+          <Plus className="h-4 w-4" /> Add Activity
+        </button>
+      </div>
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[600px] border-collapse">
+        <table className="w-full border-collapse">
           <thead>
             <tr className="border-b border-border">
-              <Th>Activity</Th>
-              <Th>Category</Th>
-              <Th>City</Th>
-              <Th>Price</Th>
-              <Th>Status</Th>
+              <th className="px-6 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Title</th>
+              <th className="px-6 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Category</th>
+              <th className="px-6 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">City</th>
+              <th className="px-6 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Price</th>
+              <th className="px-6 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Status</th>
+              <th className="px-6 py-3 text-right text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
             {activities.length === 0 ? (
-              <EmptyRow colSpan={5}>No activities match your search.</EmptyRow>
+              <tr>
+                <td colSpan={6} className="px-6 py-10 text-center text-sm text-muted-foreground">No activities found</td>
+              </tr>
             ) : (
               activities.map((a) => (
-                <tr key={a.slug}>
-                  <Td>
-                    <Link to={`/experiences/${a.slug}`} className="font-semibold text-foreground hover:text-primary">
-                      {a.title}
-                    </Link>
-                  </Td>
-                  <Td>
-                    <span className="rounded-full bg-secondary-soft px-2.5 py-1 text-xs font-medium text-secondary">{a.tag}</span>
-                  </Td>
-                  <Td>
-                    <span className="inline-flex items-center gap-1 text-muted-foreground">
-                      <MapPin className="h-3.5 w-3.5" /> {a.city}
+                <tr key={a.id}>
+                  <td className="px-6 py-4 text-sm text-foreground font-semibold">{a.title}</td>
+                  <td className="px-6 py-4 text-sm">
+                    <span className="rounded-full bg-secondary-soft px-2.5 py-1 text-xs font-medium text-secondary">
+                      {a.category}
                     </span>
-                  </Td>
-                  <Td className="font-semibold text-primary">${a.price}</Td>
-                  <Td>
-                    <StatusBadge tone="success">Live</StatusBadge>
-                  </Td>
+                  </td>
+                  <td className="px-6 py-4 text-sm text-muted-foreground">{a.city}</td>
+                  <td className="px-6 py-4 text-sm text-primary font-semibold">${a.price}</td>
+                  <td className="px-6 py-4">
+                    <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold bg-success/15 text-success">
+                      ✅ {a.status}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 text-right">
+                    <div className="flex items-center justify-end gap-2">
+                      <button
+                        type="button"
+                        onClick={() => onEdit(a)}
+                        className="inline-flex items-center gap-1 rounded-lg border border-border px-2.5 py-1 text-xs font-semibold text-foreground hover:bg-muted transition-colors"
+                      >
+                        <Pencil className="h-3 w-3" /> Edit
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => onDelete(a.id)}
+                        className="inline-flex items-center gap-1 rounded-lg border border-destructive/30 px-2.5 py-1 text-xs font-semibold text-destructive hover:bg-destructive/5 transition-colors"
+                      >
+                        <Trash2 className="h-3 w-3" /> Delete
+                      </button>
+                    </div>
+                  </td>
                 </tr>
               ))
             )}
@@ -503,127 +491,114 @@ function ActivitiesTable({ activities }) {
   );
 }
 
-/* ───────────────────────────── REVIEWS ───────────────────────────── */
+// ✅ Activity Modal Component
+function ActivityModal({ activity, onClose, onSave }) {
+  const [title, setTitle] = useState(activity?.title || "");
+  const [category, setCategory] = useState(activity?.category || "Adventure");
+  const [city, setCity] = useState(activity?.city || "");
+  const [price, setPrice] = useState(activity?.price || "");
+  const [error, setError] = useState("");
 
-function ReviewsTable({ reviews, avgRating, loading, onDeleteReview }) {
-  if (loading) {
-    return (
-      <div>
-        <SectionHeader title="Reviews" subtitle="Loading reviews..." />
-        <div className="px-6 py-10 text-center text-sm text-muted-foreground">
-          <div className="inline-block h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent"></div>
-          <p className="mt-2">Loading reviews...</p>
-        </div>
-      </div>
-    );
-  }
+  const categories = ["Adventure", "Cultural", "Food", "Water", "Desert", "Nature", "Markets", "Iconic"];
 
-  return (
-    <div>
-      <SectionHeader
-        title="Reviews"
-        subtitle={`${reviews.length} reviews · avg rating ${avgRating}`}
-        badge={
-          <span className="inline-flex items-center gap-1 rounded-full bg-primary-soft px-3 py-1 text-xs font-semibold text-primary">
-            <Star className="h-3.5 w-3.5 fill-primary text-primary" /> {avgRating} average
-          </span>
-        }
-      />
-      <div className="overflow-x-auto">
-        <table className="w-full min-w-[900px] border-collapse">
-          <thead>
-            <tr className="border-b border-border">
-              <Th>Tourist</Th>
-              <Th>Guide</Th>
-              <Th>Tour</Th>
-              <Th>City</Th>
-              <Th>Rating</Th>
-              <Th>Comment</Th>
-              <Th>Date</Th>
-              <Th className="text-right">Actions</Th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-border">
-            {reviews.length === 0 ? (
-              <EmptyRow colSpan={8}>No reviews match your search.</EmptyRow>
-            ) : (
-              reviews.map((r) => (
-                <tr key={r.id}>
-                  <Td className="font-semibold">{r.reviewerName}</Td>
-                  <Td className="text-muted-foreground">{r.guideName}</Td>
-                  <Td className="max-w-[160px] truncate text-muted-foreground">{r.tour || "—"}</Td>
-                  <Td className="text-muted-foreground">{r.city || "—"}</Td>
-                  <Td><Stars rating={r.rating} /></Td>
-                  <Td className="max-w-[280px]">
-                    <span className="italic text-muted-foreground">"{r.text}"</span>
-                  </Td>
-                  <Td className="whitespace-nowrap text-muted-foreground">{r.date}</Td>
-                  <Td className="text-right">
-                    <button
-                      type="button"
-                      onClick={() => onDeleteReview(r.id, r.text, r.reviewerName)}
-                      className="inline-flex items-center gap-1.5 rounded-lg border border-destructive/30 px-3 py-1.5 text-xs font-semibold text-destructive transition-colors hover:bg-destructive/5"
-                      aria-label={`Delete review by ${r.reviewerName}`}
-                    >
-                      <Trash2 className="h-3.5 w-3.5" /> Delete
-                    </button>
-                  </Td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
-}
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (!title.trim() || !city.trim() || !price) {
+      setError("Please fill in all fields");
+      return;
+    }
+    onSave({ title: title.trim(), category, city: city.trim(), price: Number(price) });
+  };
 
-/* ───────────────────────────── DELETE CONFIRMATION DIALOG ───────────────────────────── */
-
-function DeleteConfirmationDialog({ reviewText, reviewerName, onConfirm, onCancel }) {
   return (
     <div
       className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm"
-      onClick={onCancel}
+      onClick={onClose}
     >
       <div
         className="w-full max-w-md rounded-2xl border border-border bg-card p-6 shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-start gap-4">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-destructive/10 text-destructive">
-            <Trash2 className="h-5 w-5" />
-          </div>
-          <div className="flex-1">
-            <h3 className="text-lg font-semibold text-foreground">Delete Review</h3>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Are you sure you want to delete this review by <strong>{reviewerName}</strong>?
-            </p>
-            {reviewText && (
-              <div className="mt-3 rounded-lg bg-muted p-3">
-                <p className="text-sm italic text-muted-foreground">"{reviewText}"</p>
-              </div>
-            )}
-            <p className="mt-3 text-xs text-destructive">This action cannot be undone.</p>
-          </div>
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-bold text-foreground">
+            {activity ? "Edit Activity" : "Add New Activity"}
+          </h2>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted transition-colors"
+          >
+            <X className="h-5 w-5" />
+          </button>
         </div>
 
-        <div className="mt-6 flex justify-end gap-3">
-          <button
-            type="button"
-            onClick={onCancel}
-            className="rounded-lg border border-border bg-card px-4 py-2 text-sm font-semibold text-foreground hover:bg-muted transition-colors"
-          >
-            Cancel
-          </button>
-          <button
-            type="button"
-            onClick={onConfirm}
-            className="rounded-lg bg-destructive px-4 py-2 text-sm font-semibold text-white hover:bg-destructive/90 transition-colors"
-          >
-            Confirm Delete
-          </button>
-        </div>
+        <form onSubmit={handleSubmit} className="mt-4 space-y-4">
+          {error && (
+            <p className="text-sm text-destructive">{error}</p>
+          )}
+
+          <div>
+            <label className="block text-sm font-medium text-foreground mb-1">Title</label>
+            <input
+              type="text"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="Enter activity title"
+              className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/25"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-foreground mb-1">Category</label>
+            <select
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
+              className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/25"
+            >
+              {categories.map((cat) => (
+                <option key={cat} value={cat}>{cat}</option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-foreground mb-1">City</label>
+            <input
+              type="text"
+              value={city}
+              onChange={(e) => setCity(e.target.value)}
+              placeholder="Enter city"
+              className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/25"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-foreground mb-1">Price (USD)</label>
+            <input
+              type="number"
+              value={price}
+              onChange={(e) => setPrice(e.target.value)}
+              placeholder="Enter price"
+              className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/25"
+            />
+          </div>
+
+          <div className="flex justify-end gap-3 pt-4">
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-lg border border-border bg-card px-4 py-2 text-sm font-semibold text-foreground hover:bg-muted transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white hover:brightness-110 transition-colors"
+            >
+              {activity ? "Save Changes" : "Add Activity"}
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   );

@@ -1,4 +1,3 @@
-// src/components/BookingModal.jsx
 import { useState } from "react";
 import { X, Users, DollarSign, Calendar, MapPin, Clock, CreditCard } from "lucide-react";
 
@@ -49,7 +48,7 @@ export default function BookingModal({ tour, guideName, onClose, onConfirm }) {
           <div>
             <h2 className="text-lg font-bold text-foreground">Confirm Booking</h2>
             <p className="text-sm text-muted-foreground">
-              with {guideName}
+              with {guideName || "Guide"}
             </p>
           </div>
           <button
